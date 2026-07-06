@@ -2,12 +2,49 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
-	"sort"
 	"strings"
+	"time"
 )
+
+// timeago returns a human-readable relative time string for an RFC3339 timestamp.
+func timeago(ts string) string {
+	if ts == "" {
+		return ""
+	}
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return ts
+	}
+	d := time.Since(t)
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		n := int(d.Minutes())
+		if n == 1 {
+			return "1 min ago"
+		}
+		return fmt.Sprintf("%d min ago", n)
+	case d < 24*time.Hour:
+		n := int(d.Hours())
+		if n == 1 {
+			return "1 hr ago"
+		}
+		return fmt.Sprintf("%d hr ago", n)
+	case d < 30*24*time.Hour:
+		n := int(d.Hours() / 24)
+		if n == 1 {
+			return "1 day ago"
+		}
+		return fmt.Sprintf("%d days ago", n)
+	default:
+		return t.Format("Jan 2, 2006")
+	}
+}
 
 // PlanListData is passed to the plan list template.
 type PlanListData struct {
@@ -28,9 +65,6 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub) {
 	// Plan listing
 	http.HandleFunc("/plans", func(w http.ResponseWriter, r *http.Request) {
 		plans := store.List()
-		sort.Slice(plans, func(i, j int) bool {
-			return plans[i].ID < plans[j].ID
-		})
 		data := PlanListData{
 			Title: "Plans",
 			Year:  2026,
@@ -63,9 +97,6 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub) {
 	// API: list plans
 	http.HandleFunc("/api/plans", func(w http.ResponseWriter, r *http.Request) {
 		plans := store.List()
-		sort.Slice(plans, func(i, j int) bool {
-			return plans[i].ID < plans[j].ID
-		})
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(plans); err != nil {
 			log.Printf("api list error: %v", err)

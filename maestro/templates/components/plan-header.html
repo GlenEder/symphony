@@ -4,5 +4,8 @@
 	{{if .Plan.Summary}}
 	<p class="plan-summary">{{.Plan.Summary}}</p>
 	{{end}}
+	{{if .Plan.UpdatedAt}}
+	<p class="plan-updated-at">Last updated {{timeago .Plan.UpdatedAt}}</p>
+	{{end}}
 </div>
 {{end}}

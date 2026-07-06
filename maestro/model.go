@@ -11,6 +11,7 @@ type Plan struct {
 	Title    string    `json:"title"`
 	Summary  string    `json:"summary"`
 	State    string    `json:"state"`              // "draft" or "approved"
+	UpdatedAt string   `json:"updated_at,omitempty"`
 	Messages []Message `json:"messages,omitempty"`
 	Modules  []Module  `json:"modules"`
 }
@@ -49,6 +50,7 @@ type FlatPlan struct {
 	Title    string       `json:"title"`
 	Summary  string       `json:"summary"`
 	State    string       `json:"state"`
+	UpdatedAt string      `json:"updated_at,omitempty"`
 	Messages []Message    `json:"messages,omitempty"`
 	Modules  []FlatModule `json:"modules"`
 }
@@ -73,10 +75,11 @@ type FlatItem struct {
 
 func toFlatPlan(p *Plan) FlatPlan {
 	fp := FlatPlan{
-		Title:    p.Title,
-		Summary:  p.Summary,
-		State:    p.State,
-		Messages: p.Messages,
+		Title:     p.Title,
+		Summary:   p.Summary,
+		State:     p.State,
+		UpdatedAt: p.UpdatedAt,
+		Messages:  p.Messages,
 	}
 	for _, m := range p.Modules {
 		fm := FlatModule{Type: m.Type, Heading: m.Heading}

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -75,6 +76,18 @@ func (s *PlanStore) loadFile(path string) {
 		log.Printf("parse plan %s: %v", path, err)
 		return
 	}
+	// Derive UpdatedAt for legacy plans without the field
+	if plan.UpdatedAt == "" {
+		// Use the most recent message's CreatedAt if available
+		if len(plan.Messages) > 0 {
+			plan.UpdatedAt = plan.Messages[len(plan.Messages)-1].CreatedAt
+		} else {
+			// Fall back to file modification time
+			if fi, err := os.Stat(path); err == nil {
+				plan.UpdatedAt = fi.ModTime().UTC().Format(time.RFC3339)
+			}
+		}
+	}
 	id := strings.TrimSuffix(filepath.Base(path), ".toon")
 	s.mu.Lock()
 	s.plans[id] = plan
@@ -88,6 +101,7 @@ func (s *PlanStore) persistPlan(id string) error {
 	if !ok {
 		return fmt.Errorf("plan not found: %s", id)
 	}
+	plan.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
 	js, err := json.Marshal(plan)
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
@@ -187,24 +201,36 @@ func (s *PlanStore) Get(id string) *Plan {
 	return s.plans[id]
 }
 
-// List returns all plan IDs and their titles.
+// List returns all plan IDs and their titles, sorted by most recently updated first.
 func (s *PlanStore) List() []PlanSummary {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := make([]PlanSummary, 0, len(s.plans))
 	for id, p := range s.plans {
 		out = append(out, PlanSummary{
-			ID:      id,
-			Title:   p.Title,
-			Summary: p.Summary,
+			ID:        id,
+			Title:     p.Title,
+			Summary:   p.Summary,
+			UpdatedAt: p.UpdatedAt,
 		})
 	}
+	sort.Slice(out, func(i, j int) bool {
+		// Empty UpdatedAt sorts to the end (oldest position)
+		if out[i].UpdatedAt == "" {
+			return false
+		}
+		if out[j].UpdatedAt == "" {
+			return true
+		}
+		return out[i].UpdatedAt > out[j].UpdatedAt
+	})
 	return out
 }
 
 // PlanSummary is a lightweight view for listing.
 type PlanSummary struct {
-	ID      string `json:"id"`
-	Title   string `json:"title"`
-	Summary string `json:"summary"`
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Summary   string `json:"summary"`
+	UpdatedAt string `json:"updated_at,omitempty"`
 }

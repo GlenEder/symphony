@@ -397,6 +397,12 @@ main {
 	max-width: 720px;
 }
 
+.plan-updated-at {
+	margin: 0.4rem 0 0;
+	font-size: 0.82rem;
+	color: var(--color-text-tertiary);
+}
+
 /* ── Modules ── */
 
 .modules {
@@ -1617,4 +1623,6 @@ main {
 .modal-btn-danger:hover {
 	background: #b71c1c;
 	box-shadow: var(--color-shadow-sm);
+}
+r-shadow-sm);
 }

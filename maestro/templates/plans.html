@@ -14,6 +14,7 @@
 			<div class="plan-card-content">
 				<h2>{{.Title}}</h2>
 				<p>{{.Summary}}</p>
+				{{if .UpdatedAt}}<span class="plan-card-date">Updated {{timeago .UpdatedAt}}</span>{{end}}
 			</div>
 			<span class="plan-card-arrow">→</span>
 		</a>

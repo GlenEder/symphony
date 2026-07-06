@@ -69,7 +69,8 @@ func main() {
 // (not page templates) to create a base template set for cloning.
 func parseTemplates() (*template.Template, error) {
 	t := template.New("").Funcs(template.FuncMap{
-		"lower": strings.ToLower,
+		"lower":   strings.ToLower,
+		"timeago": timeago,
 	})
 	// Parse base layout
 	if _, err := t.ParseFiles("templates/base.html"); err != nil {
