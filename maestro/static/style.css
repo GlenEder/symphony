@@ -1048,9 +1048,8 @@ main {
 	border-radius: var(--radius-sm);
 	font-size: 0.88rem;
 	line-height: 1.5;
+	position: relative;
 }
-
-.message-agent .message-bubble {
 	background: var(--color-accent-bg);
 	border: 1px solid rgba(88,166,255,0.15);
 }
@@ -1084,6 +1083,33 @@ main {
 	color: var(--color-text);
 	white-space: pre-wrap;
 	word-wrap: break-word;
+}
+
+/* ── Message Delete Button ── */
+
+.message-delete-btn {
+	position: absolute;
+	top: 0.3rem;
+	right: 0.3rem;
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--color-text-tertiary);
+	font-size: 0.7rem;
+	padding: 0.15rem 0.3rem;
+	border-radius: var(--radius-sm);
+	line-height: 1;
+	opacity: 0;
+	transition: all var(--transition-fast);
+}
+
+.message-bubble:hover .message-delete-btn {
+	opacity: 1;
+}
+
+.message-delete-btn:hover {
+	color: var(--color-danger);
+	background: var(--color-danger-bg);
 }
 
 .message-compose {
@@ -1507,4 +1533,88 @@ main {
 	.step-content {
 		width: 100%;
 	}
+}
+
+/* ── Confirm Delete Modal ── */
+
+.modal-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.45);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity var(--transition-base);
+}
+
+.modal-overlay.visible {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.modal-dialog {
+	background: var(--color-surface);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--color-shadow-lg);
+	width: 360px;
+	max-width: 90vw;
+	padding: var(--space-lg);
+}
+
+.modal-header {
+	margin-bottom: var(--space-sm);
+}
+
+.modal-title {
+	font-size: 1.05rem;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
+.modal-body {
+	font-size: 0.9rem;
+	color: var(--color-text-secondary);
+	margin-bottom: var(--space-lg);
+	line-height: 1.5;
+}
+
+.modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--space-sm);
+}
+
+.modal-btn {
+	padding: 0.5rem 1rem;
+	font-size: 0.85rem;
+	font-weight: 500;
+	border: none;
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	line-height: 1.4;
+}
+
+.modal-btn-cancel {
+	background: var(--color-surface-hover);
+	color: var(--color-text-secondary);
+	border: 1px solid var(--color-border);
+}
+
+.modal-btn-cancel:hover {
+	background: var(--color-border);
+	color: var(--color-text);
+}
+
+.modal-btn-danger {
+	background: var(--color-danger);
+	color: #fff;
+}
+
+.modal-btn-danger:hover {
+	background: #b71c1c;
+	box-shadow: var(--color-shadow-sm);
 }

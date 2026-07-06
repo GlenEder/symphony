@@ -40,6 +40,7 @@
 							{{if .ItemRef}}
 							<span class="message-item-ref" data-item-ref="{{.ItemRef}}">↳ referencing item {{.ItemRef}}</span>
 							{{end}}
+							<button class="message-delete-btn" onclick="deleteMessage('{{.ID}}')" title="Delete message">✕</button>
 						</div>
 					</div>
 					{{end}}
@@ -123,7 +124,8 @@
 					'</div>' +
 					'<p class="message-text">' + escapeHtml(msg.text) + '</p>' +
 					itemRefHtml +
-				'</div>';
+				'<button class="message-delete-btn" onclick="deleteMessage(\'' + msg.id + '\')" title="Delete message">✕</button>' +
+			'</div>';
 
 			thread.appendChild(div);
 			div.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -365,6 +367,7 @@
 				'</div>' +
 				'<p class="message-text">' + escapeHtml(msg.text) + '</p>' +
 				(msg.item_ref ? '<span class="message-item-ref" data-item-ref="' + msg.item_ref + '">↳ referencing item ' + msg.item_ref + '</span>' : '') +
+			'<button class="message-delete-btn" onclick="deleteMessage(\'' + msg.id + '\')" title="Delete message">✕</button>' +
 			'</div>';
 		thread.appendChild(div);
 		div.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -422,7 +425,8 @@
 					'</div>' +
 					'<p class="message-text">' + escapeHtml(msg.text) + '</p>' +
 					(msg.item_ref ? '<span class="message-item-ref">↳ referencing item ' + msg.item_ref + '</span>' : '') +
-				'</div>';
+				'<button class="message-delete-btn" onclick="deleteMessage(\'' + msg.id + '\')" title="Delete message">✕</button>' +
+			'</div>';
 			thread.appendChild(div);
 			div.scrollIntoView({ behavior: "smooth", block: "end" });
 
@@ -438,6 +442,74 @@
 			statusEl.textContent = "Error: " + err.message;
 			statusEl.className = "compose-status error";
 			submitBtn.disabled = false;
+		});
+	}
+
+	/* ── Delete message ── */
+
+	let pendingDeleteId = null;
+
+	function deleteMessage(msgId) {
+		pendingDeleteId = msgId;
+		document.getElementById("delete-modal-overlay").classList.add("visible");
+	}
+
+	function cancelDeleteModal() {
+		pendingDeleteId = null;
+		document.getElementById("delete-modal-overlay").classList.remove("visible");
+	}
+
+	function confirmDeleteModal() {
+		const msgId = pendingDeleteId;
+		pendingDeleteId = null;
+		cancelDeleteModal();
+
+		const statusEl = document.getElementById("compose-status");
+		if (statusEl) {
+			statusEl.textContent = "Deleting…";
+			statusEl.className = "compose-status saving";
+		}
+
+		fetch("/api/plan/" + planID + "/messages/" + msgId, {
+			method: "DELETE"
+		})
+		.then(function(resp) {
+			if (!resp.ok) throw new Error("Server returned " + resp.status);
+			return resp.json();
+		})
+		.then(function(plan) {
+			// Remove the message element from the DOM
+			const el = document.querySelector('.message[data-message-id="' + msgId + '"]');
+			if (el) el.remove();
+
+			// Update count
+			const countEl = document.getElementById("messages-count");
+			const msgs = plan.messages || [];
+			if (countEl) {
+				countEl.textContent = msgs.length;
+			}
+
+			// Show empty state if no messages left
+			if (msgs.length === 0) {
+				const thread = document.getElementById("messages-thread");
+				if (thread && !thread.querySelector(".messages-empty")) {
+					const p = document.createElement("p");
+					p.className = "messages-empty";
+					p.textContent = "No messages yet. Start the discussion about this plan.";
+					thread.appendChild(p);
+				}
+			}
+
+			if (statusEl) {
+				statusEl.textContent = "";
+				statusEl.className = "compose-status";
+			}
+		})
+		.catch(function(err) {
+			if (statusEl) {
+				statusEl.textContent = "Error: " + err.message;
+				statusEl.className = "compose-status error";
+			}
 		});
 	}
 
@@ -546,5 +618,26 @@
 			}
 		}
 	});
+
+	// Close delete modal on Escape
+	document.addEventListener("keydown", function(e) {
+		if (e.key === "Escape" && document.getElementById("delete-modal-overlay").classList.contains("visible")) {
+			cancelDeleteModal();
+		}
+	});
 </script>
+
+<!-- Confirm delete modal -->
+<div class="modal-overlay" id="delete-modal-overlay" onclick="cancelDeleteModal()">
+	<div class="modal-dialog" onclick="event.stopPropagation()">
+		<div class="modal-header">
+			<span class="modal-title">Delete message?</span>
+		</div>
+		<p class="modal-body">This action cannot be undone.</p>
+		<div class="modal-actions">
+			<button class="modal-btn modal-btn-cancel" onclick="cancelDeleteModal()">Cancel</button>
+			<button class="modal-btn modal-btn-danger" id="delete-modal-confirm" onclick="confirmDeleteModal()">Delete</button>
+		</div>
+	</div>
+</div>
 {{end}}

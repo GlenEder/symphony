@@ -107,10 +107,10 @@ func (s *PlanStore) persistPlan(id string) error {
 // AddMessage appends a message to the plan's conversation thread and persists.
 func (s *PlanStore) AddMessage(id, role, text, itemRef string) (*Message, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	plan, ok := s.plans[id]
 	if !ok {
+		s.mu.Unlock()
 		return nil, fmt.Errorf("plan not found: %s", id)
 	}
 
@@ -122,11 +122,45 @@ func (s *PlanStore) AddMessage(id, role, text, itemRef string) (*Message, error)
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 	plan.Messages = append(plan.Messages, msg)
+	s.mu.Unlock()
 
 	if err := s.persistPlan(id); err != nil {
 		return nil, err
 	}
 	return &msg, nil
+}
+
+// DeleteMessage removes a message from the plan's conversation thread by ID.
+func (s *PlanStore) DeleteMessage(planID, msgID string) error {
+	s.mu.Lock()
+
+	plan, ok := s.plans[planID]
+	if !ok {
+		s.mu.Unlock()
+		return fmt.Errorf("plan not found: %s", planID)
+	}
+
+	found := false
+	for i, msg := range plan.Messages {
+		if msg.ID == msgID {
+			plan.Messages = append(plan.Messages[:i], plan.Messages[i+1:]...)
+			found = true
+			break
+		}
+	}
+	s.mu.Unlock()
+
+	if !found {
+		return fmt.Errorf("message not found: %s", msgID)
+	}
+
+	if err := s.persistPlan(planID); err != nil {
+		return err
+	}
+	if s.onChange != nil {
+		s.onChange(planID)
+	}
+	return nil
 }
 
 // SetState sets the plan's state. Only "draft" and "approved" are valid.

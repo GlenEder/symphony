@@ -54,10 +54,10 @@ modules[7]:
   - type: questions
     heading: Open Questions
     items[4]:
-      - answer: "Not yet — system preference detection covers 95% of use cases."
+      - answer: "Not yet -- system preference detection covers 95% of use cases."
         answered: true
         text: Should we add a manual dark/light mode toggle in the header?
-      - answer: "No — the project targets modern browsers only (Go 1.26+ ecosystem)."
+      - answer: "No -- the project targets modern browsers only (Go 1.26+ ecosystem)."
         answered: true
         text: Do we need to support Internet Explorer 11?
       - text: Should module cards use an accordion pattern for long plans?

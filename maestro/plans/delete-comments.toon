@@ -1,0 +1,43 @@
+modules[6]:
+  - items[4]{text}:
+    Each message in the discussion thread displays a delete button on hover
+    Clicking the delete button removes the message from the UI and decrements the count
+    The message is removed from the plan's conversation thread on the server and persisted to disk
+    Other connected clients see the deletion via WebSocket broadcast in real time
+    heading: Acceptance Criteria
+    type: criteria
+  - items[6]{status,text}:
+    pending,Add DeleteMessage method to PlanStore in store.go - removes a message by ID from plan.Messages and persists
+    pending,"Add DELETE /api/plan/{id}/messages/{msgId} endpoint in handler.go - route DELETE requests to call DeleteMessage and broadcast via WebSocket"
+    pending,Add delete button to the server-rendered message template in plan.html - include it in the message-bubble section
+    pending,"Add delete button to all JS-rendered message paths in plan.html - updateMessages() appendMessageToThread() and the inline sendMessage() code"
+    pending,"Add deleteMessage(msgId) JavaScript function that sends a DELETE request removes the DOM element and updates the message count"
+    pending,Add CSS styles for the delete button in style.css - small icon button hidden by default visible on message hover danger color
+    heading: Implementation Steps
+    type: steps
+  - items[2]{impact,mitigation,severity,text}:
+    User may accidentally delete a message,"Add a confirmation step (e.g. confirm() dialog or undo toast) before deletion",low,Accidental deletion of discussion messages
+    WebSocket broadcast may not reach all clients in time,The delete response returns the updated message list which the requesting client uses; WebSocket is best-effort for other clients,low,Race condition between DELETE response and WebSocket update
+    heading: Risks
+    type: risks
+  - items[2]{text}:
+    "Any user can delete any message (no authentication/authorization layer exists yet)"
+    Deletion is permanent - no soft-delete or undo is required
+    heading: Assumptions
+    type: assumptions
+  - items[4]{text,type}:
+    maestro/store.go,go
+    maestro/handler.go,go
+    maestro/templates/plan.html,html
+    maestro/static/style.css,css
+    heading: Changes Required
+    type: changes
+  - items[3]{text}:
+    No changes to model.go - the Message type already has an ID field which is sufficient for deletion
+    The WebSocket onChange callback in PlanStore triggers automatically when the plan is persisted; the hub broadcasts the full plan to all connected clients
+    "The DELETE route reuses the existing /api/plan/{id} prefix - parse the path to extract the message ID from the suffix"
+    heading: Notes
+    type: notes
+state: draft
+summary: "Add the ability for users to delete their own comments (messages) from the discussion sidebar on the plan detail page."
+title: Add Delete Buttons for Comments in Discussion Queue

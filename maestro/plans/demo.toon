@@ -71,7 +71,7 @@ modules[7]:
   - type: notes
     heading: Notes
     items[2]:
-      - text: Coordinate with DevOps team to schedule the maintenance window. Suggested window is Saturday 02:00–04:00 UTC.
+      - text: Coordinate with DevOps team to schedule the maintenance window. Suggested window is Saturday 02:00--04:00 UTC.
       - text: Run the migration script with --dry-run first to verify all steps before the actual cutover.
 
   - type: questions
@@ -79,7 +79,7 @@ modules[7]:
     items[3]:
       - text: Should we keep the old PG12 instance running for 30 days as a fallback?
         answered: true
-        answer: Yes — keep for 30 days at reduced cost (scale down to minimal size).
+        answer: Yes -- keep for 30 days at reduced cost (scale down to minimal size).
       - text: What is the acceptable replication lag threshold for cutover?
         answered: true
         answer: Maximum 5 seconds lag before we abort the cutover.

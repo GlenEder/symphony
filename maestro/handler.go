@@ -80,6 +80,30 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub) {
 			return
 		}
 
+		if r.Method == http.MethodDelete {
+			// DELETE /api/plan/{id}/messages/{msgId} — delete a message from the thread
+			parts := strings.SplitN(id, "/", 3)
+			if len(parts) == 3 && parts[1] == "messages" {
+				if err := store.DeleteMessage(parts[0], parts[2]); err != nil {
+					log.Printf("delete message error: %v", err)
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+				plan := store.Get(parts[0])
+				if plan == nil {
+					http.NotFound(w, r)
+					return
+				}
+				fp := toFlatPlan(plan)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(fp.JSON())
+				return
+			}
+			http.NotFound(w, r)
+			return
+		}
+
 		if r.Method == http.MethodPost {
 			// POST /api/plan/{id}/messages — add a message to the conversation thread
 			if msgID, ok := strings.CutSuffix(id, "/messages"); ok {

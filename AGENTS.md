@@ -11,6 +11,9 @@ These instructions are for all scenarios across all agents.
 - Never manually modify changelog files, or any files that are auto-generated.
 - When writing Markdown files, ensure every sentence is on its own line.
   Preserve normal Markdown structure, and avoid putting multiple sentences on one line.
+- When planning work, do **not** implement anything.
+  Only investigate, explore, and produce the plan.
+  Wait for explicit approval or a prompt like "implement" to begin coding.
 - When doing bug fixes, always start with reproducing the bug in an E2E setting as closely aligned with how an end user would experience it.
   This helps ensure you find the real problem so your fix solves it.
 - When end-to-end testing, be picky about the UI you see and be obsessed with pixel perfection.
@@ -19,4 +22,5 @@ These instructions are for all scenarios across all agents.
   If you see one, even if it is not caused by what you are working on right now, still fix it.
 - For planning discussions, stay in Agent mode by default.
   Do not switch to Plan mode unless I explicitly ask for a mode switch.
+- Once you craft the initial plan, use the maestro skill to start a feedback session with the plan
 
