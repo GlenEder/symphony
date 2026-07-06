@@ -72,13 +72,71 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub) {
 		}
 	})
 
-	// API: get plan
+	// API: get plan, submit response, or set approval
 	http.HandleFunc("/api/plan/", func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/api/plan/")
 		if id == "" {
 			http.NotFound(w, r)
 			return
 		}
+
+		if r.Method == http.MethodPost {
+			// POST /api/plan/{id}/response — submit user response
+			if responseID, ok := strings.CutSuffix(id, "/response"); ok {
+				var body struct {
+					Text string `json:"text"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid request body", http.StatusBadRequest)
+					return
+				}
+				if err := store.SaveResponse(responseID, body.Text); err != nil {
+					log.Printf("save response error: %v", err)
+					http.Error(w, "internal error", http.StatusInternalServerError)
+					return
+				}
+				plan := store.Get(responseID)
+				if plan == nil {
+					http.NotFound(w, r)
+					return
+				}
+				fp := toFlatPlan(plan)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(fp.JSON())
+				return
+			}
+
+			// POST /api/plan/{id}/approve — set approval status
+			if approveID, ok := strings.CutSuffix(id, "/approve"); ok {
+				var body struct {
+					Approved bool `json:"approved"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, "invalid request body", http.StatusBadRequest)
+					return
+				}
+				if err := store.SetApproved(approveID, body.Approved); err != nil {
+					log.Printf("set approval error: %v", err)
+					http.Error(w, "internal error", http.StatusInternalServerError)
+					return
+				}
+				plan := store.Get(approveID)
+				if plan == nil {
+					http.NotFound(w, r)
+					return
+				}
+				fp := toFlatPlan(plan)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(fp.JSON())
+				return
+			}
+
+			http.NotFound(w, r)
+			return
+		}
+
 		plan := store.Get(id)
 		if plan == nil {
 			http.NotFound(w, r)

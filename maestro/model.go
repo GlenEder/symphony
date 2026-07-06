@@ -3,9 +3,11 @@ package main
 import "encoding/json"
 
 type Plan struct {
-	Title   string   `json:"title"`
-	Summary string   `json:"summary"`
-	Modules []Module `json:"modules"`
+	Title    string   `json:"title"`
+	Summary  string   `json:"summary"`
+	Response string   `json:"response,omitempty"`
+	Approved bool     `json:"approved"`
+	Modules  []Module `json:"modules"`
 }
 
 type Module struct {
@@ -28,9 +30,11 @@ type Item struct {
 
 // FlatPlan is a JSON-friendly version with less nesting for the API.
 type FlatPlan struct {
-	Title   string       `json:"title"`
-	Summary string       `json:"summary"`
-	Modules []FlatModule `json:"modules"`
+	Title    string       `json:"title"`
+	Summary  string       `json:"summary"`
+	Response string       `json:"response,omitempty"`
+	Approved bool         `json:"approved"`
+	Modules  []FlatModule `json:"modules"`
 }
 
 type FlatModule struct {
@@ -52,7 +56,7 @@ type FlatItem struct {
 }
 
 func toFlatPlan(p *Plan) FlatPlan {
-	fp := FlatPlan{Title: p.Title, Summary: p.Summary}
+	fp := FlatPlan{Title: p.Title, Summary: p.Summary, Response: p.Response, Approved: p.Approved}
 	for _, m := range p.Modules {
 		fm := FlatModule{Type: m.Type, Heading: m.Heading}
 		for _, it := range m.Items {

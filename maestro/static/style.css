@@ -48,7 +48,7 @@ body {
 
 main {
 	flex: 1;
-	max-width: 800px;
+	max-width: 1100px;
 	width: 100%;
 	margin: 0 auto;
 	padding: 2rem;
@@ -487,4 +487,322 @@ main {
 	background: #f8f8f8;
 	padding: 0.4rem 0.75rem;
 	border-radius: 4px;
+}
+
+/* ── Plan detail layout (two-column) ── */
+
+.plan-layout {
+	display: flex;
+	gap: 2rem;
+	align-items: flex-start;
+}
+
+.plan-layout-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.plan-layout-sidebar {
+	width: 300px;
+	flex-shrink: 0;
+	position: sticky;
+	top: 2rem;
+	transition: width 0.2s ease;
+}
+
+.plan-layout-sidebar.collapsed {
+	width: auto;
+}
+
+/* ── Approval panel ── */
+
+.approval-panel {
+	background: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	overflow: hidden;
+	margin-bottom: 1rem;
+}
+
+.approval-header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.75rem 1rem;
+	cursor: pointer;
+	user-select: none;
+	background: #f8f8f8;
+	border-bottom: 1px solid #e0e0e0;
+	transition: background 0.15s;
+}
+
+.approval-header:hover {
+	background: #f0f0f0;
+}
+
+.approval-status-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.approval-status-dot.approved {
+	background: #34a853;
+	box-shadow: 0 0 6px rgba(52,168,83,0.5);
+}
+
+.approval-status-dot.pending {
+	background: #dadce0;
+}
+
+.approval-header-title {
+	flex: 1;
+	font-size: 0.9rem;
+	font-weight: 600;
+	color: #333;
+}
+
+.approval-toggle-btn {
+	font-size: 0.75rem;
+	color: #888;
+	transition: transform 0.2s ease;
+}
+
+.approval-body {
+	padding: 1rem;
+}
+
+.approval-description {
+	margin: 0 0 0.75rem;
+	font-size: 0.85rem;
+	color: #666;
+	line-height: 1.4;
+}
+
+.approval-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.approval-btn {
+	padding: 0.45rem 1rem;
+	font-size: 0.85rem;
+	font-weight: 500;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: background 0.15s;
+	white-space: nowrap;
+}
+
+.approval-btn.approve {
+	background: #34a853;
+	color: #fff;
+}
+
+.approval-btn.approve:hover {
+	background: #2d9249;
+}
+
+.approval-btn.revoke {
+	background: #f0f0f0;
+	color: #555;
+	border: 1px solid #ddd;
+}
+
+.approval-btn.revoke:hover {
+	background: #e0e0e0;
+}
+
+.approval-btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.approval-status {
+	font-size: 0.82rem;
+}
+
+.approval-status.saving {
+	color: #666;
+}
+
+.approval-status.success {
+	color: #137333;
+}
+
+.approval-status.error {
+	color: #c5221f;
+}
+
+/* ── Response panel ── */
+
+.response-panel {
+	background: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.response-header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.75rem 1rem;
+	cursor: pointer;
+	user-select: none;
+	background: #f8f8f8;
+	border-bottom: 1px solid #e0e0e0;
+	transition: background 0.15s;
+}
+
+.response-header:hover {
+	background: #f0f0f0;
+}
+
+.response-header-icon {
+	font-size: 1rem;
+	line-height: 1;
+}
+
+.response-header-title {
+	flex: 1;
+	font-size: 0.9rem;
+	font-weight: 600;
+	color: #333;
+}
+
+.response-toggle-btn {
+	font-size: 0.75rem;
+	color: #888;
+	transition: transform 0.2s ease;
+}
+
+.response-body {
+	padding: 1rem;
+}
+
+.response-panel.collapsed .response-body {
+	display: none;
+}
+
+.response-panel.collapsed .response-header {
+	border-bottom: none;
+}
+
+.response-display {
+	font-size: 0.9rem;
+	line-height: 1.5;
+	color: #444;
+	margin-bottom: 0.75rem;
+}
+
+.response-display .response-text {
+	margin: 0 0 0.5rem;
+	padding: 0.75rem;
+	background: #f8f8f8;
+	border-radius: 6px;
+	font-size: 0.9rem;
+	line-height: 1.5;
+	color: #333;
+}
+
+.response-edit-btn {
+	padding: 0.35rem 0.65rem;
+	font-size: 0.78rem;
+	background: #f0f0f0;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	color: #555;
+	cursor: pointer;
+}
+
+.response-edit-btn:hover {
+	background: #e0e0e0;
+	color: #333;
+}
+
+.response-form {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.response-textarea {
+	width: 100%;
+	padding: 0.65rem;
+	font-family: inherit;
+	font-size: 0.88rem;
+	line-height: 1.5;
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	resize: vertical;
+	color: #333;
+	background: #fafafa;
+	box-sizing: border-box;
+	min-height: 6rem;
+}
+
+.response-textarea:focus {
+	outline: none;
+	border-color: #1a73e8;
+	background: #fff;
+	box-shadow: 0 0 0 2px rgba(26,115,232,0.1);
+}
+
+.response-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.response-submit-btn {
+	padding: 0.45rem 1rem;
+	font-size: 0.85rem;
+	font-weight: 500;
+	background: #1a73e8;
+	color: #fff;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: background 0.15s;
+	white-space: nowrap;
+}
+
+.response-submit-btn:hover {
+	background: #1557b0;
+}
+
+.response-submit-btn:disabled {
+	background: #94b8f0;
+	cursor: not-allowed;
+}
+
+.response-status {
+	font-size: 0.82rem;
+}
+
+.response-status.saving {
+	color: #666;
+}
+
+.response-status.success {
+	color: #137333;
+}
+
+.response-status.error {
+	color: #c5221f;
+}
+
+@media (max-width: 800px) {
+	.plan-layout {
+		flex-direction: column;
+	}
+
+	.plan-layout-sidebar {
+		width: 100%;
+		position: static;
+	}
 }

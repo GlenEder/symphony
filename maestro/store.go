@@ -81,6 +81,67 @@ func (s *PlanStore) loadFile(path string) {
 	log.Printf("loaded plan: %s (%s)", id, plan.Title)
 }
 
+// SaveResponse updates a plan's Response field and persists the change to disk.
+func (s *PlanStore) SaveResponse(id, text string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	plan, ok := s.plans[id]
+	if !ok {
+		return fmt.Errorf("plan not found: %s", id)
+	}
+
+	plan.Response = text
+
+	// Round-trip through JSON to get a plain map[string]any for TOON encoding
+	js, err := json.Marshal(plan)
+	if err != nil {
+		return fmt.Errorf("json marshal: %w", err)
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(js, &raw); err != nil {
+		return fmt.Errorf("json unmarshal: %w", err)
+	}
+
+	toonBytes, err := toon.Marshal(raw, &toon.EncodeOptions{Indent: 2})
+	if err != nil {
+		return fmt.Errorf("toon marshal: %w", err)
+	}
+
+	path := filepath.Join(s.dir, id+".toon")
+	return os.WriteFile(path, toonBytes, 0644)
+}
+
+// SetApproved updates a plan's Approved status and persists the change to disk.
+func (s *PlanStore) SetApproved(id string, approved bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	plan, ok := s.plans[id]
+	if !ok {
+		return fmt.Errorf("plan not found: %s", id)
+	}
+
+	plan.Approved = approved
+
+	js, err := json.Marshal(plan)
+	if err != nil {
+		return fmt.Errorf("json marshal: %w", err)
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(js, &raw); err != nil {
+		return fmt.Errorf("json unmarshal: %w", err)
+	}
+
+	toonBytes, err := toon.Marshal(raw, &toon.EncodeOptions{Indent: 2})
+	if err != nil {
+		return fmt.Errorf("toon marshal: %w", err)
+	}
+
+	path := filepath.Join(s.dir, id+".toon")
+	return os.WriteFile(path, toonBytes, 0644)
+}
+
 // Get returns a plan by its ID.
 func (s *PlanStore) Get(id string) *Plan {
 	s.mu.RLock()

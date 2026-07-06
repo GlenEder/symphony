@@ -1,0 +1,55 @@
+approved: false
+modules[7]:
+  - items[5]{text}:
+    "Plan detail page shows an approval panel in the sidebar, above the response panel"
+    "Clicking \"Approve Plan\" sets the plan as approved and shows a green dot with glow"
+    "Clicking \"Revoke Approval\" reverts the plan to pending (gray dot)"
+    Approval state persists to the .toon file and survives page reloads
+    Approval state is included in WebSocket broadcasts so all clients see the update in real time
+    heading: Acceptance Criteria
+    type: criteria
+  - items[8]{owner,status,text}:
+    you,pending,Add Approved bool field to Plan and FlatPlan in model.go
+    you,pending,"Update toFlatPlan() to copy Approved field"
+    you,pending,"Add SetApproved() method to PlanStore in store.go"
+    you,pending,"Add POST /api/plan/{id}/approve route in handler.go"
+    you,pending,Create templates/components/approval-panel.html component template
+    you,pending,"Integrate approval panel into plan.html sidebar + add toggleApproval() JS"
+    you,pending,Add CSS styles for approval panel to style.css
+    you,pending,Restart the server and test the full approval flow E2E
+    heading: Implementation Steps
+    type: steps
+  - items[2]{impact,mitigation,severity,text}:
+    "Last write wins, no conflict detection",Single-user tool for now; file-based locking could be added later if needed,low,Approval state could get out of sync if multiple users toggle simultaneously
+    "Approval panel shows \"Pending Approval\" instead of breaking","Approved defaults to false (Go zero value), so existing plans gracefully show pending",low,Missing Approval field in existing .toon files causes empty/invalid state
+    heading: Risks
+    type: risks
+  - items[3]{text}:
+    "Approval is a simple boolean toggle (no multi-status, no audit trail)"
+    "The approval panel goes in the sidebar on the plan detail page only, not the list page"
+    "The panel is collapsible with always-visible status dot, matching the response panel pattern"
+    heading: Assumptions
+    type: assumptions
+  - items[5]{text,type}:
+    maestro/model.go,go
+    maestro/store.go,go
+    maestro/handler.go,go
+    maestro/templates/plan.html,html
+    maestro/static/style.css,css
+    heading: Changes Required
+    type: changes
+  - items[4]{text}:
+    "The approval flow mirrors the existing response submission ÃÂ¢ÃÂÃÂ same round-trip pattern (JSON ÃÂ¢ÃÂÃÂ TOON ÃÂ¢ÃÂÃÂ disk write), same WebSocket broadcast approach. This keeps the codebase consistent."
+    "The template component approval-panel.html follows the same collapsible-panel pattern as the response panel, so users familiar with one will recognize the other."
+    "Green dot gets a subtle box-shadow glow (box-shadow: 0 0 6px rgba(52,168,83,0.5)) to make the \"green light\" unmistakable at a glance."
+    "The API route follows the same /api/plan/{id}/approve pattern. POST toggles approval based on the JSON body's approved field."
+    heading: Notes
+    type: notes
+  - items[3]{answer,answered,text}:
+    No ÃÂ¢ÃÂÃÂ not in this initial pass. Just a boolean toggle.,true,Should the approval panel show a timestamp of when it was approved?
+    Not in this pass. The approval component is plan-detail only for now.,true,Should the plan list page show which plans are approved?
+    No ÃÂ¢ÃÂÃÂ single-click toggle is sufficient. Status feedback appears inline.,true,Should the approval button require a confirmation dialog?
+    heading: Open Questions
+    type: questions
+summary: Add a persistent approval panel to the plan detail page that serves as a green-light signal for agents to start implementation.
+title: Approval Component — Green Light for Agents
