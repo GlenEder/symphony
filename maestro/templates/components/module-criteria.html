@@ -1,10 +1,10 @@
 {{define "module-criteria"}}
 <ul class="item-list criteria-list">
-	{{range .}}
-	<li class="criteria-item">
+	{{range $ii, $item := .}}
+	<li class="criteria-item" data-item-idx="{{$ii}}">
 		<label class="criteria-label">
-			<input type="checkbox" class="criteria-checkbox" disabled{{if .Answered}} checked{{end}}>
-			<span class="criteria-text">{{.Text}}</span>
+			<input type="checkbox" class="criteria-checkbox" disabled{{if $item.Answered}} checked{{end}}>
+			<span class="criteria-text">{{$item.Text}}</span>
 		</label>
 	</li>
 	{{end}}

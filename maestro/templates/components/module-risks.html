@@ -1,16 +1,16 @@
 {{define "module-risks"}}
 <div class="risk-list">
-	{{range .}}
-	<div class="risk-card risk-{{.Severity}}">
+	{{range $ii, $item := .}}
+	<div class="risk-card risk-{{$item.Severity}}" data-item-idx="{{$ii}}">
 		<div class="risk-header">
-			{{if .Severity}}<span class="risk-severity badge badge-{{.Severity}}">{{.Severity}}</span>{{end}}
-			<span class="risk-text">{{.Text}}</span>
+			{{if $item.Severity}}<span class="risk-severity badge badge-{{$item.Severity}}">{{$item.Severity}}</span>{{end}}
+			<span class="risk-text">{{$item.Text}}</span>
 		</div>
-		{{if .Impact}}
-		<p class="risk-detail"><strong>Impact:</strong> {{.Impact}}</p>
+		{{if $item.Impact}}
+		<p class="risk-detail"><strong>Impact:</strong> {{$item.Impact}}</p>
 		{{end}}
-		{{if .Mitigation}}
-		<p class="risk-detail"><strong>Mitigation:</strong> {{.Mitigation}}</p>
+		{{if $item.Mitigation}}
+		<p class="risk-detail"><strong>Mitigation:</strong> {{$item.Mitigation}}</p>
 		{{end}}
 	</div>
 	{{end}}

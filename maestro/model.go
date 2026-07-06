@@ -1,21 +1,37 @@
 package main
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+	"time"
+)
 
+// Plan represents a structured planning document with a conversation thread.
 type Plan struct {
-	Title    string   `json:"title"`
-	Summary  string   `json:"summary"`
-	Response string   `json:"response,omitempty"`
-	Approved bool     `json:"approved"`
-	Modules  []Module `json:"modules"`
+	Title    string    `json:"title"`
+	Summary  string    `json:"summary"`
+	State    string    `json:"state"`              // "draft" or "approved"
+	Messages []Message `json:"messages,omitempty"`
+	Modules  []Module  `json:"modules"`
 }
 
+// Message is a single entry in the plan's conversation thread.
+type Message struct {
+	ID        string `json:"id"`
+	Role      string `json:"role"`                // "agent" or "human"
+	Text      string `json:"text"`
+	ItemRef   string `json:"item_ref,omitempty"`  // "moduleIndex:itemIndex" positional ref
+	CreatedAt string `json:"created_at"`
+}
+
+// Module is a typed section of a plan.
 type Module struct {
 	Type    string `json:"type"`
 	Heading string `json:"heading"`
 	Items   []Item `json:"items"`
 }
 
+// Item is a single entry within a module.
 type Item struct {
 	Text       string `json:"text"`
 	Severity   string `json:"severity,omitempty"`
@@ -28,12 +44,12 @@ type Item struct {
 	ChangeType string `json:"type,omitempty"`
 }
 
-// FlatPlan is a JSON-friendly version with less nesting for the API.
+// FlatPlan is the JSON-friendly version with less nesting for the API and WebSocket.
 type FlatPlan struct {
 	Title    string       `json:"title"`
 	Summary  string       `json:"summary"`
-	Response string       `json:"response,omitempty"`
-	Approved bool         `json:"approved"`
+	State    string       `json:"state"`
+	Messages []Message    `json:"messages,omitempty"`
 	Modules  []FlatModule `json:"modules"`
 }
 
@@ -56,7 +72,12 @@ type FlatItem struct {
 }
 
 func toFlatPlan(p *Plan) FlatPlan {
-	fp := FlatPlan{Title: p.Title, Summary: p.Summary, Response: p.Response, Approved: p.Approved}
+	fp := FlatPlan{
+		Title:    p.Title,
+		Summary:  p.Summary,
+		State:    p.State,
+		Messages: p.Messages,
+	}
 	for _, m := range p.Modules {
 		fm := FlatModule{Type: m.Type, Heading: m.Heading}
 		for _, it := range m.Items {
@@ -80,4 +101,9 @@ func toFlatPlan(p *Plan) FlatPlan {
 func (fp FlatPlan) JSON() []byte {
 	b, _ := json.Marshal(fp)
 	return b
+}
+
+// newMsgID generates a short unique message ID based on nanosecond timestamp.
+func newMsgID() string {
+	return fmt.Sprintf("msg_%x", time.Now().UnixNano())
 }

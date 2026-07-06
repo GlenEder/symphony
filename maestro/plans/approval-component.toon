@@ -1,4 +1,4 @@
-approved: false
+state: draft
 modules[7]:
   - items[5]{text}:
     "Plan detail page shows an approval panel in the sidebar, above the response panel"
@@ -39,16 +39,16 @@ modules[7]:
     heading: Changes Required
     type: changes
   - items[4]{text}:
-    "The approval flow mirrors the existing response submission ÃÂ¢ÃÂÃÂ same round-trip pattern (JSON ÃÂ¢ÃÂÃÂ TOON ÃÂ¢ÃÂÃÂ disk write), same WebSocket broadcast approach. This keeps the codebase consistent."
+    "The approval flow mirrors the existing response submission — same round-trip pattern (JSON → TOON → disk write), same WebSocket broadcast approach. This keeps the codebase consistent."
     "The template component approval-panel.html follows the same collapsible-panel pattern as the response panel, so users familiar with one will recognize the other."
     "Green dot gets a subtle box-shadow glow (box-shadow: 0 0 6px rgba(52,168,83,0.5)) to make the \"green light\" unmistakable at a glance."
     "The API route follows the same /api/plan/{id}/approve pattern. POST toggles approval based on the JSON body's approved field."
     heading: Notes
     type: notes
   - items[3]{answer,answered,text}:
-    No ÃÂ¢ÃÂÃÂ not in this initial pass. Just a boolean toggle.,true,Should the approval panel show a timestamp of when it was approved?
-    Not in this pass. The approval component is plan-detail only for now.,true,Should the plan list page show which plans are approved?
-    No ÃÂ¢ÃÂÃÂ single-click toggle is sufficient. Status feedback appears inline.,true,Should the approval button require a confirmation dialog?
+    "No — not in this initial pass. Just a boolean toggle.",true,Should the approval panel show a timestamp of when it was approved?
+    "Not in this pass. The approval component is plan-detail only for now.",true,Should the plan list page show which plans are approved?
+    "No — single-click toggle is sufficient. Status feedback appears inline.",true,Should the approval button require a confirmation dialog?
     heading: Open Questions
     type: questions
 summary: Add a persistent approval panel to the plan detail page that serves as a green-light signal for agents to start implementation.

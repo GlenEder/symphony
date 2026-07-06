@@ -7,9 +7,11 @@
 	<div class="plan-layout-main">
 		{{template "plan-header" .}}
 
-		<section class="modules">
-			{{range .Plan.Modules}}
-				{{template "plan-module" .}}
+		<section class="modules" id="modules-container">
+			{{range $mi, $m := .Plan.Modules}}
+			<div data-module-idx="{{$mi}}">
+				{{template "plan-module" $m}}
+			</div>
 			{{end}}
 		</section>
 	</div>
@@ -17,32 +19,48 @@
 	<div class="plan-layout-sidebar" id="plan-sidebar">
 		{{template "approval-panel" .Plan}}
 
-		<div class="response-panel" id="response-panel">
+		<div class="messages-panel" id="messages-panel">
 
-			<div class="response-header" onclick="toggleResponsePanel()">
-				<span class="response-header-icon">💬</span>
-				<span class="response-header-title">Response</span>
-				<span class="response-toggle-btn" id="response-toggle-btn">◀</span>
+			<div class="messages-header">
+				<span class="messages-header-icon">💬</span>
+				<span class="messages-header-title">Discussion</span>
+				<span class="messages-count" id="messages-count">{{len .Plan.Messages}}</span>
 			</div>
 
-			<div class="response-body" id="response-body">
-
-				{{if .Plan.Response}}
-				<div class="response-display">
-					<p class="response-text">{{.Plan.Response}}</p>
-					<button class="response-edit-btn" onclick="editResponse()">Edit</button>
-				</div>
-				{{end}}
-
-				<div class="response-form" id="response-form" {{if .Plan.Response}}style="display:none"{{end}}>
-					<textarea class="response-textarea" id="response-text" rows="5" placeholder="Type your response to this plan…">{{.Plan.Response}}</textarea>
-					<div class="response-actions">
-						<button class="response-submit-btn" id="response-submit" onclick="submitResponse()">Submit</button>
-						<span class="response-status" id="response-status"></span>
+			<div class="messages-thread" id="messages-thread">
+				{{if .Plan.Messages}}
+					{{range .Plan.Messages}}
+					<div class="message message-{{.Role}}" data-message-id="{{.ID}}">
+						<div class="message-avatar">{{if eq .Role "agent"}}🤖{{else}}👤{{end}}</div>
+						<div class="message-bubble">
+							<div class="message-meta">
+								<span class="message-role">{{if eq .Role "agent"}}Agent{{else}}You{{end}}</span>
+								<span class="message-time">{{.CreatedAt}}</span>
+							</div>
+							<p class="message-text">{{.Text}}</p>
+							{{if .ItemRef}}
+							<span class="message-item-ref" data-item-ref="{{.ItemRef}}">↳ referencing item {{.ItemRef}}</span>
+							{{end}}
+						</div>
 					</div>
-				</div>
-
+					{{end}}
+				{{else}}
+				<p class="messages-empty">No messages yet. Start the discussion about this plan.</p>
+				{{end}}
 			</div>
+
+			<div class="message-compose" id="message-compose">
+				<div class="compose-item-ref" id="compose-item-ref" style="display:none">
+					<span id="compose-item-ref-label"></span>
+					<button class="compose-clear-ref" onclick="clearItemRef()">✕</button>
+				</div>
+				<textarea class="compose-textarea" id="compose-text" rows="3" placeholder="Add to the discussion…"></textarea>
+				<div class="compose-actions">
+					<button class="compose-submit-btn" id="compose-submit" onclick="sendMessage()">Send</button>
+					<span class="compose-status" id="compose-status"></span>
+				</div>
+			</div>
+
 		</div>
 	</div>
 
@@ -56,72 +74,216 @@
 	const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
 	const ws = new WebSocket(wsProto + "//" + location.host + "/ws/plan/" + planID);
 
+	/* ── WebSocket — incremental updates ── */
+
 	ws.onmessage = function(event) {
 		const plan = JSON.parse(event.data);
-		location.reload();
+		updateMessages(plan.messages || []);
+		updateModules(plan.modules);
+		updateState(plan.state);
 	};
 
 	ws.onclose = function() {
 		console.log("WebSocket closed — plan updates disabled");
 	};
 
-	function toggleResponsePanel() {
-		const panel = document.getElementById("response-panel");
-		const sidebar = document.getElementById("plan-sidebar");
-		const btn = document.getElementById("response-toggle-btn");
-		const body = document.getElementById("response-body");
+	function updateMessages(messages) {
+		const thread = document.getElementById("messages-thread");
+		const countEl = document.getElementById("messages-count");
+		const emptyEl = thread.querySelector(".messages-empty");
 
-		panel.classList.toggle("collapsed");
+		// Clear placeholder if it exists
+		if (emptyEl && messages.length > 0) {
+			emptyEl.remove();
+		}
 
-		if (panel.classList.contains("collapsed")) {
-			sidebar.classList.add("collapsed");
-			btn.textContent = "▶";
-		} else {
-			sidebar.classList.remove("collapsed");
-			btn.textContent = "◀";
+		// Track existing message IDs
+		const existingIDs = new Set();
+		thread.querySelectorAll(".message").forEach(function(el) {
+			existingIDs.add(el.dataset.messageId);
+		});
+
+		// Append new messages
+		messages.forEach(function(msg) {
+			if (existingIDs.has(msg.id)) return;
+
+			const div = document.createElement("div");
+			div.className = "message message-" + msg.role;
+			div.dataset.messageId = msg.id;
+
+			const avatar = msg.role === "agent" ? "🤖" : "👤";
+			const roleLabel = msg.role === "agent" ? "Agent" : "You";
+
+			let itemRefHtml = "";
+			if (msg.item_ref) {
+				itemRefHtml = '<span class="message-item-ref" data-item-ref="' + msg.item_ref + '">↳ referencing item ' + msg.item_ref + '</span>';
+			}
+
+			div.innerHTML =
+				'<div class="message-avatar">' + avatar + '</div>' +
+				'<div class="message-bubble">' +
+					'<div class="message-meta">' +
+						'<span class="message-role">' + roleLabel + '</span>' +
+						'<span class="message-time">' + msg.created_at + '</span>' +
+					'</div>' +
+					'<p class="message-text">' + escapeHtml(msg.text) + '</p>' +
+					itemRefHtml +
+				'</div>';
+
+			thread.appendChild(div);
+			div.scrollIntoView({ behavior: "smooth", block: "end" });
+		});
+
+		if (countEl) {
+			countEl.textContent = messages.length;
 		}
 	}
 
-	function submitResponse() {
-		const textarea = document.getElementById("response-text");
-		const submitBtn = document.getElementById("response-submit");
-		const statusEl = document.getElementById("response-status");
+	function updateModules() {
+		// Full modules refresh is handled by the server-side render on page load.
+		// For agent rewrites, we reload the page to get fresh server-rendered modules.
+		// This keeps the template logic in Go rather than duplicating it in JS.
+		location.reload();
+	}
+
+	function updateState(state) {
+		const dot = document.querySelector(".approval-status-dot");
+		const title = document.querySelector(".approval-header-title");
+		const btn = document.getElementById("approval-btn");
+		const desc = document.querySelector(".approval-description");
+
+		if (!dot || !title || !btn || !desc) return;
+
+		if (state === "approved") {
+			dot.className = "approval-status-dot approved";
+			title.textContent = "Approved";
+			btn.textContent = "Revoke Approval";
+			btn.className = "approval-btn revoke";
+			desc.textContent = "This plan is approved. The agent will proceed with implementation.";
+		} else {
+			dot.className = "approval-status-dot pending";
+			title.textContent = "In Discussion";
+			btn.textContent = "Approve Plan";
+			btn.className = "approval-btn approve";
+			desc.textContent = "Approve this plan when the discussion is complete. Only human reviewers can approve a plan — this signals the agent to proceed.";
+		}
+	}
+
+	function escapeHtml(str) {
+		const div = document.createElement("div");
+		div.textContent = str;
+		return div.innerHTML;
+	}
+
+	/* ── Comment buttons on plan items ── */
+
+	let currentItemRef = "";
+
+	document.addEventListener("DOMContentLoaded", function() {
+		// Add comment buttons to all items by positional index
+		document.querySelectorAll("[data-item-idx]").forEach(function(el) {
+			const moduleEl = el.closest("[data-module-idx]");
+			if (!moduleEl) return;
+			const moduleIdx = moduleEl.dataset.moduleIdx;
+			const itemIdx = el.dataset.itemIdx;
+			const pos = moduleIdx + ":" + itemIdx;
+			const commentBtn = document.createElement("button");
+			commentBtn.className = "item-comment-btn";
+			commentBtn.title = "Comment on this item";
+			commentBtn.textContent = "💬";
+			commentBtn.onclick = function(e) {
+				e.stopPropagation();
+				setItemRef(pos, el.textContent.trim().substring(0, 60));
+			};
+			el.appendChild(commentBtn);
+		});
+	});
+
+	function setItemRef(itemId, label) {
+		currentItemRef = itemId;
+		const refBar = document.getElementById("compose-item-ref");
+		const refLabel = document.getElementById("compose-item-ref-label");
+		refBar.style.display = "flex";
+		refLabel.textContent = "Replying to: " + label;
+		document.getElementById("compose-text").focus();
+	}
+
+	function clearItemRef() {
+		currentItemRef = "";
+		document.getElementById("compose-item-ref").style.display = "none";
+	}
+
+	/* ── Send message ── */
+
+	function sendMessage() {
+		const textarea = document.getElementById("compose-text");
+		const submitBtn = document.getElementById("compose-submit");
+		const statusEl = document.getElementById("compose-status");
 		const text = textarea.value.trim();
 
 		if (!text) {
-			statusEl.textContent = "Please enter a response.";
-			statusEl.className = "response-status error";
+			statusEl.textContent = "Please enter a message.";
+			statusEl.className = "compose-status error";
 			return;
 		}
 
 		submitBtn.disabled = true;
-		statusEl.textContent = "Saving…";
-		statusEl.className = "response-status saving";
+		statusEl.textContent = "Sending…";
+		statusEl.className = "compose-status saving";
 
-		fetch("/api/plan/" + planID + "/response", {
+		fetch("/api/plan/" + planID + "/messages", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ text: text })
+			body: JSON.stringify({
+				role: "human",
+				text: text,
+				item_ref: currentItemRef || undefined
+			})
 		})
 		.then(function(resp) {
 			if (!resp.ok) throw new Error("Server returned " + resp.status);
 			return resp.json();
 		})
-		.then(function() {
-			statusEl.textContent = "Response saved.";
-			statusEl.className = "response-status success";
-			setTimeout(function() { location.reload(); }, 500);
+		.then(function(msg) {
+			textarea.value = "";
+			clearItemRef();
+			statusEl.textContent = "Sent.";
+			statusEl.className = "compose-status success";
+
+			// Append the message locally (WS broadcast will also deliver it)
+			const thread = document.getElementById("messages-thread");
+			const emptyEl = thread.querySelector(".messages-empty");
+			if (emptyEl) emptyEl.remove();
+
+			const div = document.createElement("div");
+			div.className = "message message-human";
+			div.dataset.messageId = msg.id;
+			div.innerHTML =
+				'<div class="message-avatar">👤</div>' +
+				'<div class="message-bubble">' +
+					'<div class="message-meta">' +
+						'<span class="message-role">You</span>' +
+						'<span class="message-time">' + msg.created_at + '</span>' +
+					'</div>' +
+					'<p class="message-text">' + escapeHtml(msg.text) + '</p>' +
+					(msg.item_ref ? '<span class="message-item-ref">↳ referencing item ' + msg.item_ref + '</span>' : '') +
+				'</div>';
+			thread.appendChild(div);
+			div.scrollIntoView({ behavior: "smooth", block: "end" });
+
+			const countEl = document.getElementById("messages-count");
+			if (countEl) {
+				countEl.textContent = parseInt(countEl.textContent || "0") + 1;
+			}
+
+			submitBtn.disabled = false;
+			setTimeout(function() { statusEl.textContent = ""; }, 2000);
 		})
 		.catch(function(err) {
 			statusEl.textContent = "Error: " + err.message;
-			statusEl.className = "response-status error";
+			statusEl.className = "compose-status error";
 			submitBtn.disabled = false;
 		});
-	}
-
-	function editResponse() {
-		document.querySelector(".response-display").style.display = "none";
-		document.getElementById("response-form").style.display = "";
 	}
 
 	/* ── Approval panel ── */
@@ -141,25 +303,27 @@
 	function toggleApproval() {
 		const btn = document.getElementById("approval-btn");
 		const statusEl = document.getElementById("approval-status");
-		const newApproved = btn.classList.contains("approve");
+		const isApproved = btn.classList.contains("revoke");
+		const newState = isApproved ? "draft" : "approved";
 
 		btn.disabled = true;
 		statusEl.textContent = "Saving…";
 		statusEl.className = "approval-status saving";
 
-		fetch("/api/plan/" + planID + "/approve", {
+		fetch("/api/plan/" + planID + "/state", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ approved: newApproved })
+			body: JSON.stringify({ state: newState })
 		})
 		.then(function(resp) {
 			if (!resp.ok) throw new Error("Server returned " + resp.status);
 			return resp.json();
 		})
-		.then(function() {
+		.then(function(plan) {
 			statusEl.textContent = "Saved.";
 			statusEl.className = "approval-status success";
-			setTimeout(function() { location.reload(); }, 300);
+			updateState(plan.state);
+			setTimeout(function() { statusEl.textContent = ""; }, 2000);
 		})
 		.catch(function(err) {
 			statusEl.textContent = "Error: " + err.message;
@@ -167,5 +331,17 @@
 			btn.disabled = false;
 		});
 	}
+
+	/* ── Compose keyboard shortcut ── */
+
+	document.addEventListener("keydown", function(e) {
+		if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+			const textarea = document.getElementById("compose-text");
+			if (document.activeElement === textarea) {
+				e.preventDefault();
+				sendMessage();
+			}
+		}
+	});
 </script>
 {{end}}

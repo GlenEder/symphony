@@ -34,25 +34,38 @@ A plan is a TOON file with the following structure:
 ```toon
 title: Plan Title
 summary: Short description of the plan
+state: draft|approved
 
 modules[N]:
-  - type: <module-type>
-    heading: Module Heading
-    items[N]:
-      - text: Item description
-        # optional fields per item:
-        severity: high|medium|low
-        impact: Description of impact
-        mitigation: How to mitigate
-        status: pending|in-progress|done|blocked
-        owner: team-or-person
-        answered: true|false
-        answer: The answer text
-        type: terraform|config|docs   # for changes module
+  - heading: Module Heading
+    items[N]{field1,field2,…}:
+      # Data rows using tabular tuple format
+    type: <module-type>
 
-# Optional top-level field for user-submitted responses
-# response: Your feedback here
+# Messages are stored separately and not part of the TOON file (they are persisted as JSON).
+# See the Messages API below.
 ```
+
+### Tabular Tuple Format
+
+Items use TOON's tabular tuple format for compactness:
+
+```toon
+items[4]{text}:
+  All existing data is preserved after migration
+  "Read replicas sync within 5 seconds of primary"
+  "Rollback completes in under 15 minutes"
+  "All application integration tests pass against new database"
+```
+
+Multi-field items:
+
+```toon
+items[3]{impact,mitigation,severity,text}:
+  "Loss of transactions during the final sync window","Run in read-only mode for 15 minutes before cutover",high,"Replication lag could cause data inconsistency during cutover"
+```
+
+**Important**: The data rows must be **indented deeper** (2 more spaces) than the `items[N]{fields}:` header line.
 
 ### Module Types
 
@@ -66,14 +79,14 @@ modules[N]:
 | `notes`       | Freeform notes                       |
 | `questions`   | Open questions with answered/answer  |
 
-### Top-Level Fields
-
 | Field      | Type   | Description                                      |
 |------------|--------|--------------------------------------------------|
 | `title`    | string | Plan title (required)                            |
 | `summary`  | string | Short description of the plan                    |
-| `response` | string | User-submitted response/feedback (optional)      |
+| `state`    | string | Plan state: `draft` or `approved`                |
 | `modules`  | array  | Plan module list                                 |
+
+Messages are stored alongside the plan in-memory and persisted to the `.toon` file on disk. They are not part of the raw TOON format — they are added by the server during load/save round-trip.
 
 ### Item Fields by Module Type
 
@@ -106,92 +119,56 @@ modules[N]:
 
 ```toon
 title: Database Migration Plan
-summary: Migrate from PostgreSQL 12 to PostgreSQL 15 with zero downtime across all environments.
+summary: "Migrate from PostgreSQL 12 to PostgreSQL 15 with zero downtime across all environments."
+state: draft
 
 modules[7]:
-  - type: criteria
-    heading: Acceptance Criteria
-    items[4]:
-      - text: All existing data is preserved after migration
-      - text: Read replicas sync within 5 seconds of primary
-      - text: Rollback completes in under 15 minutes
-      - text: All application integration tests pass against new database
-        answered: true
-
-  - type: steps
-    heading: Implementation Steps
-    items[6]:
-      - text: Provision PostgreSQL 15 instance in staging
-        owner: infra-team
-        status: done
-      - text: Configure logical replication between old and new instances
-        owner: infra-team
-        status: pending
-      - text: Run schema compatibility checks on all databases
-        owner: app-team
-        status: pending
-      - text: Switch read traffic to new instance and monitor
-        owner: app-team
-        status: pending
-      - text: Switch write traffic during maintenance window
-        owner: both
-        status: blocked
-      - text: Decommission old PostgreSQL 12 instance
-        owner: infra-team
-        status: pending
-
-  - type: risks
-    heading: Risks
-    items[3]:
-      - text: Replication lag could cause data inconsistency during cutover
-        severity: high
-        impact: Loss of transactions during the final sync window
-        mitigation: Run in read-only mode for 15 minutes before cutover
-      - text: Application connection strings need updates across all services
-        severity: medium
-        impact: Services unable to connect to new database
-        mitigation: Use a DNS alias so the connection string remains unchanged
-      - text: Minor PostgreSQL extension version mismatch
-        severity: low
-        impact: Some advanced features may be temporarily unavailable
-        mitigation: Verify all extensions are compatible with PG15 ahead of time
-
-  - type: assumptions
-    heading: Assumptions
-    items[3]:
-      - text: Application uses connection pooling via PgBouncer
-      - text: No schema migrations will be deployed during the migration window
-      - text: Network latency between old and new instances is under 1ms
-
-  - type: changes
-    heading: Changes Required
-    items[4]:
-      - text: infra/terraform/database.tf
-        type: terraform
-      - text: config/deploy.yml
-        type: config
-      - text: docker-compose.yml
-        type: config
-      - text: docs/runbooks/migration.md
-        type: docs
-
-  - type: notes
-    heading: Notes
-    items[2]:
-      - text: Coordinate with DevOps team to schedule the maintenance window. Suggested window is Saturday 02:00–04:00 UTC.
-      - text: Run the migration script with --dry-run first to verify all steps before the actual cutover.
-
-  - type: questions
-    heading: Open Questions
-    items[3]:
-      - text: Should we keep the old PG12 instance running for 30 days as a fallback?
-        answered: true
-        answer: Yes — keep for 30 days at reduced cost (scale down to minimal size).
-      - text: What is the acceptable replication lag threshold for cutover?
-        answered: true
-        answer: Maximum 5 seconds lag before we abort the cutover.
-      - text: Do we need to update any monitoring dashboards or alerts?
-        answered: false
+  - heading: Acceptance Criteria
+    items[4]{text}:
+      All existing data is preserved after migration
+      "Read replicas sync within 5 seconds of primary"
+      "Rollback completes in under 15 minutes"
+      "All application integration tests pass against new database"
+    type: criteria
+  - heading: Implementation Steps
+    items[6]{owner,status,text}:
+      infra-team,done,"Provision PostgreSQL 15 instance in staging"
+      infra-team,pending,"Configure logical replication between old and new instances"
+      app-team,pending,"Run schema compatibility checks on all databases"
+      app-team,pending,"Switch read traffic to new instance and monitor"
+      both,blocked,"Switch write traffic during maintenance window"
+      infra-team,pending,"Decommission old PostgreSQL 12 instance"
+    type: steps
+  - heading: Risks
+    items[3]{impact,mitigation,severity,text}:
+      "Loss of transactions during the final sync window","Run in read-only mode for 15 minutes before cutover",high,"Replication lag could cause data inconsistency during cutover"
+      "Services unable to connect to new database","Use a DNS alias so the connection string remains unchanged",medium,"Application connection strings need updates across all services"
+      "Some advanced features may be temporarily unavailable","Verify all extensions are compatible with PG15 ahead of time",low,"Minor PostgreSQL extension version mismatch"
+    type: risks
+  - heading: Assumptions
+    items[3]{text}:
+      "Application uses connection pooling via PgBouncer"
+      "No schema migrations will be deployed during the migration window"
+      "Network latency between old and new instances is under 1ms"
+    type: assumptions
+  - heading: Changes Required
+    items[4]{text,type}:
+      infra/terraform/database.tf,terraform
+      config/deploy.yml,config
+      docker-compose.yml,config
+      docs/runbooks/migration.md,docs
+    type: changes
+  - heading: Notes
+    items[2]{text}:
+      "Coordinate with DevOps team to schedule the maintenance window. Suggested window is Saturday 02:00–04:00 UTC."
+      "Run the migration script with --dry-run first to verify all steps before the actual cutover."
+    type: notes
+  - heading: Open Questions
+    items[3]{answer,answered,text}:
+      "Yes — keep for 30 days at reduced cost (scale down to minimal size).",true,"Should we keep the old PG12 instance running for 30 days as a fallback?"
+      "Maximum 5 seconds lag before we abort the cutover.",true,"What is the acceptable replication lag threshold for cutover?"
+      ,false,"Do we need to update any monitoring dashboards or alerts?"
+    type: questions
 ```
 
 ## API Endpoints
@@ -222,7 +199,8 @@ Response is a flat JSON structure:
 {
   "title": "Database Migration Plan",
   "summary": "...",
-  "response": "...",
+  "state": "draft",
+  "messages": [],
   "modules": [
     {
       "type": "criteria",
@@ -235,26 +213,43 @@ Response is a flat JSON structure:
 }
 ```
 
-### Submit Plan Response
+### Add a Message (Conversation Thread)
 
 ```
-POST /api/plan/{id}/response
+POST /api/plan/{id}/messages
 Content-Type: application/json
 
-{"text": "Your feedback or response to the plan"}
+{"role": "human", "text": "Your feedback", "item_ref": "2:1"}
 ```
 
-Returns the full updated flat JSON plan. The response is saved to the `.toon` plan file on disk, which triggers the file watcher and broadcasts the update to all WebSocket clients viewing that plan.
+- `role`: `"agent"` or `"human"`
+- `text`: message body (required)
+- `item_ref`: optional positional reference `"moduleIndex:itemIndex"` (e.g., `"2:1"` = module 2, item 1)
 
-Response:
+Returns the created message:
 ```json
 {
-  "title": "Database Migration Plan",
-  "summary": "...",
-  "response": "Your feedback or response to the plan",
-  "modules": [...]
+  "id": "msg_18bfc3e196bafae0",
+  "role": "human",
+  "text": "Your feedback",
+  "item_ref": "2:1",
+  "created_at": "2026-07-06T17:35:51Z"
 }
 ```
+
+The message is appended to the plan's conversation thread and the plan is persisted.
+
+### Set Plan State
+
+```
+POST /api/plan/{id}/state
+Content-Type: application/json
+
+{"state": "approved"}
+```
+
+Valid states: `"draft"`, `"approved"`.
+Returns the full updated flat JSON plan.
 
 ### WebSocket (Live Updates)
 
@@ -266,11 +261,11 @@ When the plan file is modified, the server sends the full flat JSON plan over th
 
 ## Web UI Routes
 
-| Route              | Description                              |
-|--------------------|------------------------------------------|
-| `/`                | Redirects to `/plans`                    |
-| `/plans`           | Plan listing page                        |
-| `/plan/{id}`       | Plan detail page with response box       |
+| Route              | Description                                    |
+|--------------------|------------------------------------------------|
+| `/`                | Redirects to `/plans`                          |
+| `/plans`           | Plan listing page                              |
+| `/plan/{id}`       | Plan detail page with modules, sidebar, messages |
 
 ### Example: `plans/regression-suite.toon`
 
@@ -366,10 +361,11 @@ modules[6]:
 
 ## Workflow: Creating and Editing Plans
 
-1. Create a `.toon` file in the `plans/` directory following the TOON format above.
+1. Create a `.toon` file in the `plans/` directory using the tabular tuple format shown above.
 2. The server loads it automatically on startup (or on next request if placed while running).
 3. The file watcher detects edits and triggers a WebSocket broadcast to connected clients.
 4. To update a plan, edit the `.toon` file — the server picks up changes live.
+5. To add feedback or comments, use the API's messages endpoint or the sidebar in the web UI.
 
 ## Code Layout
 
@@ -407,7 +403,8 @@ TOON is Token-Oriented Object Notation — a compact, schema-aware JSON encoding
 
 - `key: value` for simple fields
 - `key[N]:` for arrays followed by indented items
-- `- field: value` for array elements
+- `key[N]{fields}:` for tabular tuple arrays with data rows on subsequent lines (must be indented deeper)
+- `- field: value` for array elements in list format
 - Indentation (2 spaces) is significant — it defines nesting
 
 ## Use Cases

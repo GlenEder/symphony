@@ -918,7 +918,290 @@ main {
 	color: var(--color-danger);
 }
 
-/* ── Response Panel ── */
+/* ── Response Panel (legacy — kept for history) ── */
+
+/* ── Messages Panel ── */
+
+.messages-panel {
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	max-height: calc(100vh - 200px);
+	transition: box-shadow var(--transition-base);
+}
+
+.messages-panel:hover {
+	box-shadow: var(--color-shadow-sm);
+}
+
+.messages-header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: var(--space-md);
+	cursor: default;
+	user-select: none;
+	background: var(--color-surface);
+	border-bottom: 1px solid var(--color-border-light);
+}
+
+.messages-header-icon {
+	font-size: 1rem;
+	line-height: 1;
+}
+
+.messages-header-title {
+	flex: 1;
+	font-size: 0.9rem;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
+.messages-count {
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--color-text-secondary);
+	background: var(--color-surface-hover);
+	padding: 0.1em 0.5em;
+	border-radius: 20px;
+	border: 1px solid var(--color-border);
+	min-width: 1.5rem;
+	text-align: center;
+}
+
+.messages-thread {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--space-md);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-sm);
+	min-height: 120px;
+}
+
+.messages-empty {
+	color: var(--color-text-tertiary);
+	font-size: 0.85rem;
+	text-align: center;
+	padding: var(--space-lg) 0;
+	margin: 0;
+}
+
+/* ── Message Bubbles ── */
+
+.message {
+	display: flex;
+	gap: 0.6rem;
+	align-items: flex-start;
+	animation: fadeIn 0.2s ease both;
+}
+
+.message-avatar {
+	flex-shrink: 0;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.85rem;
+	background: var(--color-surface-hover);
+	border: 1px solid var(--color-border);
+	margin-top: 2px;
+}
+
+.message-bubble {
+	flex: 1;
+	min-width: 0;
+	padding: var(--space-sm) var(--space-md);
+	border-radius: var(--radius-sm);
+	font-size: 0.88rem;
+	line-height: 1.5;
+}
+
+.message-agent .message-bubble {
+	background: var(--color-accent-bg);
+	border: 1px solid rgba(88,166,255,0.15);
+}
+
+.message-human .message-bubble {
+	background: var(--color-surface-hover);
+	border: 1px solid var(--color-border-light);
+}
+
+.message-meta {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 0.2rem;
+}
+
+.message-role {
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
+.message-time {
+	font-size: 0.68rem;
+	color: var(--color-text-tertiary);
+}
+
+.message-text {
+	margin: 0;
+	font-size: 0.88rem;
+	color: var(--color-text);
+	white-space: pre-wrap;
+	word-wrap: break-word;
+}
+
+.message-item-ref {
+	display: inline-block;
+	margin-top: 0.3rem;
+	font-size: 0.72rem;
+	color: var(--color-accent);
+	cursor: pointer;
+	padding: 0.15em 0.5em;
+	border-radius: var(--radius-sm);
+	background: var(--color-accent-bg);
+	border: 1px solid rgba(88,166,255,0.2);
+}
+
+.message-item-ref:hover {
+	background: var(--color-accent);
+	color: #fff;
+}
+
+/* ── Message Compose ── */
+
+.message-compose {
+	border-top: 1px solid var(--color-border-light);
+	padding: var(--space-md);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-sm);
+}
+
+.compose-item-ref {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.35rem 0.6rem;
+	background: var(--color-accent-bg);
+	border: 1px solid rgba(88,166,255,0.2);
+	border-radius: var(--radius-sm);
+	font-size: 0.78rem;
+	color: var(--color-accent);
+}
+
+.compose-clear-ref {
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--color-accent);
+	font-size: 0.85rem;
+	padding: 0;
+	line-height: 1;
+	margin-left: auto;
+}
+
+.compose-clear-ref:hover {
+	color: var(--color-danger);
+}
+
+.compose-textarea {
+	width: 100%;
+	padding: 0.6rem 0.75rem;
+	font-family: inherit;
+	font-size: 0.85rem;
+	line-height: 1.5;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	resize: vertical;
+	color: var(--color-text);
+	background: var(--color-surface);
+	transition: all var(--transition-fast);
+	min-height: 3.5rem;
+}
+
+.compose-textarea:focus {
+	outline: none;
+	border-color: var(--color-accent);
+	box-shadow: 0 0 0 3px var(--color-accent-bg);
+}
+
+.compose-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--space-sm);
+}
+
+.compose-submit-btn {
+	padding: 0.4rem 0.9rem;
+	font-size: 0.82rem;
+	font-weight: 500;
+	border: none;
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	white-space: nowrap;
+	line-height: 1.4;
+	background: var(--color-accent);
+	color: #fff;
+}
+
+.compose-submit-btn:hover {
+	background: var(--color-accent-hover);
+	box-shadow: var(--color-shadow-sm);
+}
+
+.compose-submit-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.compose-status {
+	font-size: 0.78rem;
+}
+
+.compose-status.saving {
+	color: var(--color-text-secondary);
+}
+
+.compose-status.success {
+	color: var(--color-success);
+}
+
+.compose-status.error {
+	color: var(--color-danger);
+}
+
+/* ── Item Comment Button ── */
+
+.item-comment-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 0.85rem;
+	padding: 0.1em 0.3em;
+	margin-left: 0.4rem;
+	border-radius: var(--radius-sm);
+	opacity: 0.4;
+	transition: opacity var(--transition-fast), background var(--transition-fast);
+	vertical-align: middle;
+	line-height: 1;
+}
+
+.item-comment-btn:hover {
+	opacity: 1;
+	background: var(--color-accent-bg);
+}
 
 .response-panel.collapsed .response-body {
 	display: none;

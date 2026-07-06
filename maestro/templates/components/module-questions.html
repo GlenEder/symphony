@@ -1,13 +1,13 @@
 {{define "module-questions"}}
 <ul class="item-list questions-list">
-	{{range .}}
-	<li class="question-item {{if .Answered}}question-answered{{end}}">
+	{{range $ii, $item := .}}
+	<li class="question-item {{if $item.Answered}}question-answered{{end}}" data-item-idx="{{$ii}}">
 		<div class="question-header">
-			<span class="question-status">{{if .Answered}}✓{{else}}?{{end}}</span>
-			<span class="question-text">{{.Text}}</span>
+			<span class="question-status">{{if $item.Answered}}✓{{else}}?{{end}}</span>
+			<span class="question-text">{{$item.Text}}</span>
 		</div>
-		{{if .Answer}}
-		<p class="question-answer"><strong>Answer:</strong> {{.Answer}}</p>
+		{{if $item.Answer}}
+		<p class="question-answer"><strong>Answer:</strong> {{$item.Answer}}</p>
 		{{end}}
 	</li>
 	{{end}}

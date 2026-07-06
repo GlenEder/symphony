@@ -1,7 +1,7 @@
 {{define "module-assumptions"}}
 <ul class="item-list assumptions-list">
-	{{range .}}
-	<li class="assumption-item">{{.Text}}</li>
+	{{range $ii, $item := .}}
+	<li class="assumption-item" data-item-idx="{{$ii}}">{{$item.Text}}</li>
 	{{end}}
 </ul>
 {{end}}

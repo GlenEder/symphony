@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/sstraus/toon_go/toon"
 )
@@ -81,19 +82,12 @@ func (s *PlanStore) loadFile(path string) {
 	log.Printf("loaded plan: %s (%s)", id, plan.Title)
 }
 
-// SaveResponse updates a plan's Response field and persists the change to disk.
-func (s *PlanStore) SaveResponse(id, text string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+// persistPlan writes the in-memory plan to disk as a .toon file.
+func (s *PlanStore) persistPlan(id string) error {
 	plan, ok := s.plans[id]
 	if !ok {
 		return fmt.Errorf("plan not found: %s", id)
 	}
-
-	plan.Response = text
-
-	// Round-trip through JSON to get a plain map[string]any for TOON encoding
 	js, err := json.Marshal(plan)
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
@@ -102,18 +96,45 @@ func (s *PlanStore) SaveResponse(id, text string) error {
 	if err := json.Unmarshal(js, &raw); err != nil {
 		return fmt.Errorf("json unmarshal: %w", err)
 	}
-
 	toonBytes, err := toon.Marshal(raw, &toon.EncodeOptions{Indent: 2})
 	if err != nil {
 		return fmt.Errorf("toon marshal: %w", err)
 	}
-
 	path := filepath.Join(s.dir, id+".toon")
 	return os.WriteFile(path, toonBytes, 0644)
 }
 
-// SetApproved updates a plan's Approved status and persists the change to disk.
-func (s *PlanStore) SetApproved(id string, approved bool) error {
+// AddMessage appends a message to the plan's conversation thread and persists.
+func (s *PlanStore) AddMessage(id, role, text, itemRef string) (*Message, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	plan, ok := s.plans[id]
+	if !ok {
+		return nil, fmt.Errorf("plan not found: %s", id)
+	}
+
+	msg := Message{
+		ID:        newMsgID(),
+		Role:      role,
+		Text:      text,
+		ItemRef:   itemRef,
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	plan.Messages = append(plan.Messages, msg)
+
+	if err := s.persistPlan(id); err != nil {
+		return nil, err
+	}
+	return &msg, nil
+}
+
+// SetState sets the plan's state. Only "draft" and "approved" are valid.
+func (s *PlanStore) SetState(id, state string) error {
+	if state != "draft" && state != "approved" {
+		return fmt.Errorf("invalid state: %s", state)
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -121,25 +142,8 @@ func (s *PlanStore) SetApproved(id string, approved bool) error {
 	if !ok {
 		return fmt.Errorf("plan not found: %s", id)
 	}
-
-	plan.Approved = approved
-
-	js, err := json.Marshal(plan)
-	if err != nil {
-		return fmt.Errorf("json marshal: %w", err)
-	}
-	var raw map[string]any
-	if err := json.Unmarshal(js, &raw); err != nil {
-		return fmt.Errorf("json unmarshal: %w", err)
-	}
-
-	toonBytes, err := toon.Marshal(raw, &toon.EncodeOptions{Indent: 2})
-	if err != nil {
-		return fmt.Errorf("toon marshal: %w", err)
-	}
-
-	path := filepath.Join(s.dir, id+".toon")
-	return os.WriteFile(path, toonBytes, 0644)
+	plan.State = state
+	return s.persistPlan(id)
 }
 
 // Get returns a plan by its ID.

@@ -1,7 +1,7 @@
 {{define "module-generic"}}
 <ul class="item-list">
-	{{range .}}
-	<li class="generic-item">{{.Text}}</li>
+	{{range $ii, $item := .}}
+	<li class="generic-item" data-item-idx="{{$ii}}">{{$item.Text}}</li>
 	{{end}}
 </ul>
 {{end}}

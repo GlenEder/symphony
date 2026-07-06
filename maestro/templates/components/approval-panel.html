@@ -1,22 +1,22 @@
 {{define "approval-panel"}}
 <div class="approval-panel" id="approval-panel">
 	<div class="approval-header" onclick="toggleApprovalPanel()">
-		<span class="approval-status-dot {{if .Approved}}approved{{else}}pending{{end}}"></span>
-		<span class="approval-header-title">{{if .Approved}}Approved{{else}}Pending Approval{{end}}</span>
+		<span class="approval-status-dot {{if eq .State "approved"}}approved{{else}}pending{{end}}"></span>
+		<span class="approval-header-title">{{if eq .State "approved"}}Approved{{else}}In Discussion{{end}}</span>
 		<span class="approval-toggle-btn" id="approval-toggle-btn">▼</span>
 	</div>
 
 	<div class="approval-body" id="approval-body">
 		<p class="approval-description">
-			{{if .Approved}}
-				This plan is approved for implementation. The agent will proceed with building it.
+			{{if eq .State "approved"}}
+				This plan is approved. The agent will proceed with implementation.
 			{{else}}
-				Approve this plan to signal the agent to start implementation.
+				Approve this plan when the discussion is complete. Only human reviewers can approve a plan — this signals the agent to proceed.
 			{{end}}
 		</p>
 		<div class="approval-actions">
-			<button class="approval-btn {{if .Approved}}revoke{{else}}approve{{end}}" id="approval-btn" onclick="toggleApproval()">
-				{{if .Approved}}Revoke Approval{{else}}Approve Plan{{end}}
+			<button class="approval-btn {{if eq .State "approved"}}revoke{{else}}approve{{end}}" id="approval-btn" onclick="toggleApproval()">
+				{{if eq .State "approved"}}Revoke Approval{{else}}Approve Plan{{end}}
 			</button>
 			<span class="approval-status" id="approval-status"></span>
 		</div>

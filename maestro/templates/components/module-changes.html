@@ -1,9 +1,9 @@
 {{define "module-changes"}}
 <ul class="item-list changes-list">
-	{{range .}}
-	<li class="change-item">
-		<code class="change-file">{{.Text}}</code>
-		{{if .ChangeType}}<span class="badge badge-type">{{.ChangeType}}</span>{{end}}
+	{{range $ii, $item := .}}
+	<li class="change-item" data-item-idx="{{$ii}}">
+		<code class="change-file">{{$item.Text}}</code>
+		{{if $item.ChangeType}}<span class="badge badge-type">{{$item.ChangeType}}</span>{{end}}
 	</li>
 	{{end}}
 </ul>

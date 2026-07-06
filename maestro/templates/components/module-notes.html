@@ -1,7 +1,7 @@
 {{define "module-notes"}}
 <div class="notes-block">
-	{{range .}}
-	<p class="note-item">{{.Text}}</p>
+	{{range $ii, $item := .}}
+	<p class="note-item" data-item-idx="{{$ii}}">{{$item.Text}}</p>
 	{{end}}
 </div>
 {{end}}

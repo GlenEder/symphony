@@ -72,7 +72,7 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub) {
 		}
 	})
 
-	// API: get plan, submit response, or set approval
+	// API: plan operations (get, add message, set state)
 	http.HandleFunc("/api/plan/", func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/api/plan/")
 		if id == "" {
@@ -81,47 +81,52 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub) {
 		}
 
 		if r.Method == http.MethodPost {
-			// POST /api/plan/{id}/response — submit user response
-			if responseID, ok := strings.CutSuffix(id, "/response"); ok {
+			// POST /api/plan/{id}/messages — add a message to the conversation thread
+			if msgID, ok := strings.CutSuffix(id, "/messages"); ok {
 				var body struct {
-					Text string `json:"text"`
+					Role    string `json:"role"`
+					Text    string `json:"text"`
+					ItemRef string `json:"item_ref,omitempty"`
 				}
 				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 					http.Error(w, "invalid request body", http.StatusBadRequest)
 					return
 				}
-				if err := store.SaveResponse(responseID, body.Text); err != nil {
-					log.Printf("save response error: %v", err)
+				if body.Role != "agent" && body.Role != "human" {
+					http.Error(w, "role must be 'agent' or 'human'", http.StatusBadRequest)
+					return
+				}
+				if body.Text == "" {
+					http.Error(w, "text is required", http.StatusBadRequest)
+					return
+				}
+				msg, err := store.AddMessage(msgID, body.Role, body.Text, body.ItemRef)
+				if err != nil {
+					log.Printf("add message error: %v", err)
 					http.Error(w, "internal error", http.StatusInternalServerError)
 					return
 				}
-				plan := store.Get(responseID)
-				if plan == nil {
-					http.NotFound(w, r)
-					return
-				}
-				fp := toFlatPlan(plan)
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				w.Write(fp.JSON())
+				json.NewEncoder(w).Encode(msg)
 				return
 			}
 
-			// POST /api/plan/{id}/approve — set approval status
-			if approveID, ok := strings.CutSuffix(id, "/approve"); ok {
+			// POST /api/plan/{id}/state — set plan state (only human can approve)
+			if stateID, ok := strings.CutSuffix(id, "/state"); ok {
 				var body struct {
-					Approved bool `json:"approved"`
+					State string `json:"state"`
 				}
 				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 					http.Error(w, "invalid request body", http.StatusBadRequest)
 					return
 				}
-				if err := store.SetApproved(approveID, body.Approved); err != nil {
-					log.Printf("set approval error: %v", err)
-					http.Error(w, "internal error", http.StatusInternalServerError)
+				if err := store.SetState(stateID, body.State); err != nil {
+					log.Printf("set state error: %v", err)
+					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
-				plan := store.Get(approveID)
+				plan := store.Get(stateID)
 				if plan == nil {
 					http.NotFound(w, r)
 					return
@@ -137,6 +142,7 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub) {
 			return
 		}
 
+		// GET /api/plan/{id} — return the full plan as JSON
 		plan := store.Get(id)
 		if plan == nil {
 			http.NotFound(w, r)

@@ -1,13 +1,13 @@
 {{define "module-steps"}}
 <ol class="item-list steps-list">
-	{{range .}}
-	<li class="step-item">
+	{{range $ii, $item := .}}
+	<li class="step-item" data-item-idx="{{$ii}}">
 		<div class="step-content">
-			<span class="step-text">{{.Text}}</span>
-			{{if .Owner}}<span class="step-owner">{{.Owner}}</span>{{end}}
+			<span class="step-text">{{$item.Text}}</span>
+			{{if $item.Owner}}<span class="step-owner">{{$item.Owner}}</span>{{end}}
 		</div>
-		{{if .Status}}
-		<span class="badge badge-{{.Status}}">{{.Status}}</span>
+		{{if $item.Status}}
+		<span class="badge badge-{{$item.Status}}">{{$item.Status}}</span>
 		{{end}}
 	</li>
 	{{end}}
