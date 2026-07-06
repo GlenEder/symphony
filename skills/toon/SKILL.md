@@ -118,6 +118,28 @@ items[1]:
     status: active
 ```
 
+**Caution — field ordering with list-format arrays:** When a list-item object has a list-format array (`items[N]:` with `-` prefixed entries) as its first field, trailing sibling fields (e.g., `type:`, `heading:`) at the same indentation level as the array items will be absorbed into the last array item by the parser. They are treated as extra properties of that item rather than as fields of the parent object.
+
+```
+# WRONG — `type:` and `heading:` get absorbed into last item
+  - items[3]:
+    - a: 1
+    - b: 2
+    - c: 3
+    type: some-type
+    heading: Some Heading
+
+# RIGHT — place type/heading before items
+  - type: some-type
+    heading: Some Heading
+    items[3]:
+      - a: 1
+      - b: 2
+      - c: 3
+```
+
+Tabular arrays (`items[N]{fields}:` with inline data rows) do not have this issue because the tabular parser stops at lines with unquoted colons.
+
 ### Root Forms
 
 TOON can represent:
