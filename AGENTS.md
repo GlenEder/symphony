@@ -19,5 +19,4 @@ These instructions are for all scenarios across all agents.
   If you see one, even if it is not caused by what you are working on right now, still fix it.
 - For planning discussions, stay in Agent mode by default.
   Do not switch to Plan mode unless I explicitly ask for a mode switch.
-  Always use the `lavish` skill to open and present the plan.
 

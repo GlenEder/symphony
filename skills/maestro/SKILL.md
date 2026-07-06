@@ -49,6 +49,9 @@ modules[N]:
         answered: true|false
         answer: The answer text
         type: terraform|config|docs   # for changes module
+
+# Optional top-level field for user-submitted responses
+# response: Your feedback here
 ```
 
 ### Module Types
@@ -62,6 +65,15 @@ modules[N]:
 | `changes`     | Files or resources that change       |
 | `notes`       | Freeform notes                       |
 | `questions`   | Open questions with answered/answer  |
+
+### Top-Level Fields
+
+| Field      | Type   | Description                                      |
+|------------|--------|--------------------------------------------------|
+| `title`    | string | Plan title (required)                            |
+| `summary`  | string | Short description of the plan                    |
+| `response` | string | User-submitted response/feedback (optional)      |
+| `modules`  | array  | Plan module list                                 |
 
 ### Item Fields by Module Type
 
@@ -210,6 +222,7 @@ Response is a flat JSON structure:
 {
   "title": "Database Migration Plan",
   "summary": "...",
+  "response": "...",
   "modules": [
     {
       "type": "criteria",
@@ -219,6 +232,27 @@ Response is a flat JSON structure:
       ]
     }
   ]
+}
+```
+
+### Submit Plan Response
+
+```
+POST /api/plan/{id}/response
+Content-Type: application/json
+
+{"text": "Your feedback or response to the plan"}
+```
+
+Returns the full updated flat JSON plan. The response is saved to the `.toon` plan file on disk, which triggers the file watcher and broadcasts the update to all WebSocket clients viewing that plan.
+
+Response:
+```json
+{
+  "title": "Database Migration Plan",
+  "summary": "...",
+  "response": "Your feedback or response to the plan",
+  "modules": [...]
 }
 ```
 
@@ -232,11 +266,11 @@ When the plan file is modified, the server sends the full flat JSON plan over th
 
 ## Web UI Routes
 
-| Route       | Description            |
-|-------------|------------------------|
-| `/`         | Redirects to `/plans`  |
-| `/plans`    | Plan listing page      |
-| `/plan/{id}`| Plan detail page       |
+| Route              | Description                              |
+|--------------------|------------------------------------------|
+| `/`                | Redirects to `/plans`                    |
+| `/plans`           | Plan listing page                        |
+| `/plan/{id}`       | Plan detail page with response box       |
 
 ### Example: `plans/regression-suite.toon`
 
@@ -342,19 +376,19 @@ modules[6]:
 ```
 maestro/
 ├── main.go              # Entry point, env config, server setup
-├── handler.go           # HTTP route handlers (UI + API)
+├── handler.go           # HTTP route handlers (UI + JSON API)
 ├── model.go             # Data model types (Plan, Module, Item)
-├── store.go             # PlanStore — loads, caches, and lists plans
+├── store.go             # PlanStore — loads, caches, saves plans to disk
 ├── watcher.go           # File system watcher (fsnotify) for live reload
 ├── ws.go                # WebSocket hub for plan update broadcasts
 ├── go.mod / go.sum      # Go module dependencies
 ├── templates/           # Go html/template files
 │   ├── base.html        # Layout shell
-│   ├── plan.html        # Plan detail page + WebSocket client
+│   ├── plan.html        # Plan detail page + WebSocket client + response box
 │   ├── plans.html       # Plan listing page
 │   └── components/      # Reusable template components per module type
 ├── static/              # Static assets
-│   ├── style.css        # Styling
+│   ├── style.css        # Styling (includes response box styles)
 │   └── script.js        # Client-side JS
 └── plans/               # Default plans directory
     └── demo.toon        # Example plan
