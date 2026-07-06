@@ -467,7 +467,6 @@ main {
 	display: flex;
 	align-items: center;
 	gap: 0.6rem;
-	cursor: pointer;
 	padding: var(--space-xs) 0;
 }
 
@@ -476,8 +475,12 @@ main {
 	height: 1.15rem;
 	border-radius: 3px;
 	accent-color: var(--color-success);
-	cursor: pointer;
+	cursor: default;
 	flex-shrink: 0;
+}
+
+.criteria-checkbox:disabled {
+	opacity: 0.6;
 }
 
 .criteria-text {

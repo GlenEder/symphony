@@ -3,7 +3,7 @@
 	{{range .}}
 	<li class="criteria-item">
 		<label class="criteria-label">
-			<input type="checkbox" class="criteria-checkbox"{{if .Answered}} checked{{end}}>
+			<input type="checkbox" class="criteria-checkbox" disabled{{if .Answered}} checked{{end}}>
 			<span class="criteria-text">{{.Text}}</span>
 		</label>
 	</li>
