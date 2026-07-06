@@ -22,7 +22,6 @@
 		<div class="messages-panel" id="messages-panel">
 
 			<div class="messages-header">
-				<span class="messages-header-icon">💬</span>
 				<span class="messages-header-title">Discussion</span>
 				<span class="messages-count" id="messages-count">{{len .Plan.Messages}}</span>
 			</div>
@@ -209,7 +208,7 @@
 			el.classList.add("item-highlightable");
 			el.addEventListener("click", function(e) {
 				// Don't open if clicking a link, button, checkbox, etc.
-				if (e.target.tagName === "A" || e.target.tagName === "BUTTON" || e.target.tagName === "INPUT") return;
+				if (e.target.tagName === "A" || e.target.tagName === "BUTTON" || e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
 				if (e.target.closest("button") || e.target.closest("input")) return;
 
 				const moduleEl = el.closest("[data-module-idx]");
@@ -487,6 +486,54 @@
 			btn.disabled = false;
 		});
 	}
+
+	/* ── Question Responses auto-send on blur ── */
+
+	document.addEventListener("DOMContentLoaded", function() {
+		document.addEventListener("focusout", function(e) {
+			const textarea = e.target;
+			if (!textarea.classList.contains("question-input")) return;
+			if (textarea.disabled) return;
+
+			const text = textarea.value.trim();
+			if (!text) return;
+
+			const li = textarea.closest("[data-item-idx]");
+			const moduleEl = li ? li.closest("[data-module-idx]") : null;
+			if (!li || !moduleEl) return;
+
+			const itemRef = moduleEl.dataset.moduleIdx + ":" + li.dataset.itemIdx;
+
+			textarea.disabled = true;
+			textarea.style.opacity = "0.5";
+
+			fetch("/api/plan/" + planID + "/messages", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					role: "human",
+					text: text,
+					item_ref: itemRef
+				})
+			})
+			.then(function(r) {
+				if (!r.ok) throw new Error("Server returned " + r.status);
+				return r.json();
+			})
+			.then(function(msg) {
+				appendMessageToThread(msg);
+				const countEl = document.getElementById("messages-count");
+				if (countEl) {
+					countEl.textContent = parseInt(countEl.textContent || "0") + 1;
+				}
+			})
+			.catch(function(err) {
+				textarea.disabled = false;
+				textarea.style.opacity = "1";
+				console.error("Failed to send question response:", err);
+			});
+		});
+	});
 
 	/* ── Compose keyboard shortcut ── */
 
