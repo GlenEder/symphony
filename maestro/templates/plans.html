@@ -10,8 +10,12 @@
 	{{if .Plans}}
 		{{range .Plans}}
 		<a href="/plan/{{.ID}}" class="plan-card">
-			<h2>{{.Title}}</h2>
-			<p>{{.Summary}}</p>
+			<span class="plan-card-icon">📋</span>
+			<div class="plan-card-content">
+				<h2>{{.Title}}</h2>
+				<p>{{.Summary}}</p>
+			</div>
+			<span class="plan-card-arrow">→</span>
 		</a>
 		{{end}}
 	{{else}}
