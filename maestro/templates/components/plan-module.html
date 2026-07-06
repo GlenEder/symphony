@@ -1,0 +1,24 @@
+{{define "plan-module"}}
+<section class="module module-{{.Type}}" data-module-type="{{.Type}}">
+	<h2 class="module-heading">{{.Heading}}</h2>
+	<div class="module-body">
+		{{if eq .Type "criteria"}}
+			{{template "module-criteria" .Items}}
+		{{else if eq .Type "steps"}}
+			{{template "module-steps" .Items}}
+		{{else if eq .Type "risks"}}
+			{{template "module-risks" .Items}}
+		{{else if eq .Type "assumptions"}}
+			{{template "module-assumptions" .Items}}
+		{{else if eq .Type "changes"}}
+			{{template "module-changes" .Items}}
+		{{else if eq .Type "notes"}}
+			{{template "module-notes" .Items}}
+		{{else if eq .Type "questions"}}
+			{{template "module-questions" .Items}}
+		{{else}}
+			{{template "module-generic" .Items}}
+		{{end}}
+	</div>
+</section>
+{{end}}

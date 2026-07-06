@@ -1,0 +1,10 @@
+{{define "module-changes"}}
+<ul class="item-list changes-list">
+	{{range .}}
+	<li class="change-item">
+		<code class="change-file">{{.Text}}</code>
+		{{if .ChangeType}}<span class="badge badge-type">{{.ChangeType}}</span>{{end}}
+	</li>
+	{{end}}
+</ul>
+{{end}}

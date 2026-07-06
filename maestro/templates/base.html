@@ -1,0 +1,31 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{{block "title" .}}Maestro{{end}}</title>
+	<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+	<header class="site-header">
+		<a href="/plans" class="logo">Maestro</a>
+		<nav>
+			<a href="/plans">Plans</a>
+		</nav>
+	</header>
+
+	<main>
+		{{block "page-content" .}}{{end}}
+	</main>
+
+	<footer class="site-footer">
+		&copy; {{.Year}} Maestro
+	</footer>
+
+	<script src="/script.js"></script>
+	{{block "scripts" .}}{{end}}
+</body>
+</html>
+{{end}}

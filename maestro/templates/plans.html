@@ -1,0 +1,21 @@
+{{define "title"}}Plans — Maestro{{end}}
+
+{{define "page-content"}}
+<section class="hero">
+	<h1>Plans</h1>
+	<p>Select a plan to review.</p>
+</section>
+
+<section class="plan-list">
+	{{if .Plans}}
+		{{range .Plans}}
+		<a href="/plan/{{.ID}}" class="plan-card">
+			<h2>{{.Title}}</h2>
+			<p>{{.Summary}}</p>
+		</a>
+		{{end}}
+	{{else}}
+		<p class="empty-state">No plans yet. Place a <code>.toon</code> file in the plans directory.</p>
+	{{end}}
+</section>
+{{end}}

@@ -1,0 +1,31 @@
+{{define "title"}}{{.Plan.Title}} — Maestro{{end}}
+
+{{define "page-content"}}
+
+{{template "plan-header" .}}
+
+<section class="modules">
+	{{range .Plan.Modules}}
+		{{template "plan-module" .}}
+	{{end}}
+</section>
+
+{{end}}
+
+{{define "scripts"}}
+<script>
+	const planID = "{{.PlanID}}";
+	const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+	const ws = new WebSocket(wsProto + "//" + location.host + "/ws/plan/" + planID);
+
+	ws.onmessage = function(event) {
+		const plan = JSON.parse(event.data);
+		// Reload the page when the plan is updated by the agent
+		location.reload();
+	};
+
+	ws.onclose = function() {
+		console.log("WebSocket closed — plan updates disabled");
+	};
+</script>
+{{end}}

@@ -1,0 +1,12 @@
+{{define "module-criteria"}}
+<ul class="item-list criteria-list">
+	{{range .}}
+	<li class="criteria-item">
+		<label class="criteria-label">
+			<input type="checkbox" class="criteria-checkbox"{{if .Answered}} checked{{end}}>
+			<span class="criteria-text">{{.Text}}</span>
+		</label>
+	</li>
+	{{end}}
+</ul>
+{{end}}

@@ -1,0 +1,15 @@
+{{define "module-questions"}}
+<ul class="item-list questions-list">
+	{{range .}}
+	<li class="question-item {{if .Answered}}question-answered{{end}}">
+		<div class="question-header">
+			<span class="question-status">{{if .Answered}}✓{{else}}?{{end}}</span>
+			<span class="question-text">{{.Text}}</span>
+		</div>
+		{{if .Answer}}
+		<p class="question-answer"><strong>Answer:</strong> {{.Answer}}</p>
+		{{end}}
+	</li>
+	{{end}}
+</ul>
+{{end}}

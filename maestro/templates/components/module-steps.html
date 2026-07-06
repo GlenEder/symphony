@@ -1,0 +1,15 @@
+{{define "module-steps"}}
+<ol class="item-list steps-list">
+	{{range .}}
+	<li class="step-item">
+		<div class="step-content">
+			<span class="step-text">{{.Text}}</span>
+			{{if .Owner}}<span class="step-owner">{{.Owner}}</span>{{end}}
+		</div>
+		{{if .Status}}
+		<span class="badge badge-{{.Status}}">{{.Status}}</span>
+		{{end}}
+	</li>
+	{{end}}
+</ol>
+{{end}}

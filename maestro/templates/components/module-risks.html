@@ -1,0 +1,18 @@
+{{define "module-risks"}}
+<div class="risk-list">
+	{{range .}}
+	<div class="risk-card risk-{{.Severity}}">
+		<div class="risk-header">
+			{{if .Severity}}<span class="risk-severity badge badge-{{.Severity}}">{{.Severity}}</span>{{end}}
+			<span class="risk-text">{{.Text}}</span>
+		</div>
+		{{if .Impact}}
+		<p class="risk-detail"><strong>Impact:</strong> {{.Impact}}</p>
+		{{end}}
+		{{if .Mitigation}}
+		<p class="risk-detail"><strong>Mitigation:</strong> {{.Mitigation}}</p>
+		{{end}}
+	</div>
+	{{end}}
+</div>
+{{end}}

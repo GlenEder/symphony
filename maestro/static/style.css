@@ -1,0 +1,490 @@
+* {
+	box-sizing: border-box;
+}
+
+body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	margin: 0;
+	min-height: 100vh;
+	color: #333;
+	background: #fafafa;
+	display: flex;
+	flex-direction: column;
+}
+
+/* ── Header component ── */
+
+.site-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1rem 2rem;
+	background: #fff;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.logo {
+	font-size: 1.25rem;
+	font-weight: 700;
+	text-decoration: none;
+	color: #333;
+}
+
+.site-header nav {
+	display: flex;
+	gap: 1.5rem;
+}
+
+.site-header nav a {
+	text-decoration: none;
+	color: #555;
+}
+
+.site-header nav a:hover {
+	color: #000;
+}
+
+/* ── Content ── */
+
+main {
+	flex: 1;
+	max-width: 800px;
+	width: 100%;
+	margin: 0 auto;
+	padding: 2rem;
+}
+
+/* ── Hero ── */
+
+.hero {
+	text-align: center;
+	padding: 3rem 0;
+}
+
+.hero h1 {
+	font-size: 2.5rem;
+	margin: 0 0 0.5rem;
+}
+
+.hero p {
+	font-size: 1.125rem;
+	color: #666;
+}
+
+/* ── Card component ── */
+
+.cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 1.5rem;
+	margin-top: 2rem;
+}
+
+.card {
+	background: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	padding: 1.5rem;
+	text-align: center;
+}
+
+.card-icon {
+	font-size: 2rem;
+	display: block;
+	margin-bottom: 0.5rem;
+}
+
+.card h3 {
+	margin: 0 0 0.5rem;
+	font-size: 1.125rem;
+}
+
+.card p {
+	margin: 0;
+	color: #666;
+	font-size: 0.9rem;
+}
+
+/* ── Footer component ── */
+
+.site-footer {
+	text-align: center;
+	padding: 1.5rem;
+	color: #888;
+	font-size: 0.875rem;
+	border-top: 1px solid #e0e0e0;
+}
+
+/* ── Plan listing ── */
+
+.plan-list {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	margin-top: 1rem;
+}
+
+.plan-card {
+	display: block;
+	background: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	padding: 1.25rem 1.5rem;
+	text-decoration: none;
+	color: inherit;
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.plan-card:hover {
+	border-color: #999;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.plan-card h2 {
+	margin: 0 0 0.25rem;
+	font-size: 1.125rem;
+}
+
+.plan-card p {
+	margin: 0;
+	color: #666;
+	font-size: 0.9rem;
+}
+
+.empty-state {
+	text-align: center;
+	color: #999;
+	padding: 3rem 0;
+}
+
+.empty-state code {
+	background: #eee;
+	padding: 0.15em 0.4em;
+	border-radius: 3px;
+	font-size: 0.9em;
+}
+
+/* ── Plan detail page ── */
+
+.plan-header {
+	margin-bottom: 2rem;
+}
+
+.plan-header h1 {
+	margin: 0 0 0.5rem;
+	font-size: 1.75rem;
+}
+
+.plan-summary {
+	color: #666;
+	font-size: 1.05rem;
+	margin: 0;
+	line-height: 1.5;
+}
+
+/* ── Modules ── */
+
+.modules {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+}
+
+.module {
+	background: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.module-heading {
+	margin: 0;
+	padding: 0.875rem 1.25rem;
+	font-size: 1rem;
+	font-weight: 600;
+	background: #f8f8f8;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.module-body {
+	padding: 0.75rem 1.25rem;
+}
+
+/* ── Item lists ── */
+
+.item-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.item-list li {
+	padding: 0.5rem 0;
+	border-bottom: 1px solid #f0f0f0;
+}
+
+.item-list li:last-child {
+	border-bottom: none;
+}
+
+/* ── Criteria ── */
+
+.criteria-label {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+}
+
+.criteria-checkbox {
+	width: 1.1rem;
+	height: 1.1rem;
+	accent-color: #34a853;
+}
+
+.criteria-text {
+	flex: 1;
+}
+
+.criteria-checkbox:checked + .criteria-text {
+	text-decoration: line-through;
+	color: #999;
+}
+
+/* ── Steps ── */
+
+.steps-list {
+	counter-reset: step-counter;
+}
+
+.step-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	counter-increment: step-counter;
+}
+
+.step-item::before {
+	content: counter(step-counter);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	border-radius: 50%;
+	background: #e8f0fe;
+	color: #1a73e8;
+	font-size: 0.8rem;
+	font-weight: 600;
+	flex-shrink: 0;
+}
+
+.step-content {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.step-text {
+	flex: 1;
+}
+
+.step-owner {
+	font-size: 0.8rem;
+	color: #888;
+	background: #f0f0f0;
+	padding: 0.15em 0.5em;
+	border-radius: 3px;
+}
+
+/* ── Risks ── */
+
+.risk-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.risk-card {
+	padding: 0.875rem 1rem;
+	border-radius: 6px;
+	border-left: 4px solid #ccc;
+	background: #fafafa;
+}
+
+.risk-high {
+	border-left-color: #d93025;
+	background: #fce8e6;
+}
+
+.risk-medium {
+	border-left-color: #f9ab00;
+	background: #fef7e0;
+}
+
+.risk-low {
+	border-left-color: #34a853;
+	background: #e6f4ea;
+}
+
+.risk-header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.risk-text {
+	flex: 1;
+	font-weight: 500;
+}
+
+.risk-detail {
+	margin: 0.35rem 0 0;
+	font-size: 0.875rem;
+	color: #555;
+}
+
+/* ── Badges ── */
+
+.badge {
+	display: inline-block;
+	font-size: 0.75rem;
+	font-weight: 600;
+	padding: 0.15em 0.55em;
+	border-radius: 3px;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	white-space: nowrap;
+}
+
+.badge-pending {
+	background: #f0f0f0;
+	color: #666;
+}
+
+.badge-in-progress {
+	background: #e8f0fe;
+	color: #1a73e8;
+}
+
+.badge-done {
+	background: #e6f4ea;
+	color: #137333;
+}
+
+.badge-blocked {
+	background: #fce8e6;
+	color: #c5221f;
+}
+
+.badge-high {
+	background: #d93025;
+	color: #fff;
+}
+
+.badge-medium {
+	background: #f9ab00;
+	color: #fff;
+}
+
+.badge-low {
+	background: #34a853;
+	color: #fff;
+}
+
+.badge-type {
+	background: #f0f0f0;
+	color: #555;
+}
+
+/* ── Changes ── */
+
+.change-item {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+	font-size: 0.9rem;
+}
+
+.change-file {
+	background: #f0f0f0;
+	padding: 0.15em 0.5em;
+	border-radius: 3px;
+	color: #333;
+}
+
+/* ── Assumptions ── */
+
+.assumption-item {
+	color: #555;
+	font-style: italic;
+}
+
+.assumption-item::before {
+	content: "→ ";
+	color: #999;
+}
+
+/* ── Notes ── */
+
+.notes-block {
+	line-height: 1.6;
+}
+
+.note-item {
+	margin: 0 0 0.5rem;
+	color: #444;
+}
+
+.note-item:last-child {
+	margin-bottom: 0;
+}
+
+/* ── Questions ── */
+
+.question-item {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.question-header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.question-status {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.5rem;
+	height: 1.5rem;
+	border-radius: 50%;
+	font-size: 0.8rem;
+	font-weight: 700;
+	flex-shrink: 0;
+	background: #f0f0f0;
+	color: #999;
+}
+
+.question-answered .question-status {
+	background: #e6f4ea;
+	color: #137333;
+}
+
+.question-text {
+	flex: 1;
+}
+
+.question-answer {
+	margin: 0.25rem 0 0 2rem;
+	font-size: 0.9rem;
+	color: #555;
+	background: #f8f8f8;
+	padding: 0.4rem 0.75rem;
+	border-radius: 4px;
+}
