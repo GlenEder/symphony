@@ -1058,58 +1058,12 @@ main {
 	word-wrap: break-word;
 }
 
-.message-item-ref {
-	display: inline-block;
-	margin-top: 0.3rem;
-	font-size: 0.72rem;
-	color: var(--color-accent);
-	cursor: pointer;
-	padding: 0.15em 0.5em;
-	border-radius: var(--radius-sm);
-	background: var(--color-accent-bg);
-	border: 1px solid rgba(88,166,255,0.2);
-}
-
-.message-item-ref:hover {
-	background: var(--color-accent);
-	color: #fff;
-}
-
-/* ── Message Compose ── */
-
 .message-compose {
 	border-top: 1px solid var(--color-border-light);
 	padding: var(--space-md);
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-sm);
-}
-
-.compose-item-ref {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.35rem 0.6rem;
-	background: var(--color-accent-bg);
-	border: 1px solid rgba(88,166,255,0.2);
-	border-radius: var(--radius-sm);
-	font-size: 0.78rem;
-	color: var(--color-accent);
-}
-
-.compose-clear-ref {
-	background: none;
-	border: none;
-	cursor: pointer;
-	color: var(--color-accent);
-	font-size: 0.85rem;
-	padding: 0;
-	line-height: 1;
-	margin-left: auto;
-}
-
-.compose-clear-ref:hover {
-	color: var(--color-danger);
 }
 
 .compose-textarea {
@@ -1179,28 +1133,155 @@ main {
 	color: var(--color-danger);
 }
 
-/* ── Item Comment Button ── */
+/* ── Item click-to-comment ── */
 
-.item-comment-btn {
-	display: inline-flex;
+.item-highlightable {
+	cursor: pointer;
+	transition: background var(--transition-fast), box-shadow var(--transition-fast);
+	border-radius: var(--radius-sm);
+	position: relative;
+}
+
+.item-highlightable:hover {
+	background: var(--color-accent-bg);
+	box-shadow: 0 0 0 1px rgba(88,166,255,0.2);
+}
+
+.item-highlightable.item-selected {
+	background: var(--color-accent-bg);
+	box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+/* ── Item Reply Popup ── */
+
+.item-reply-popup {
+	position: fixed;
+	z-index: 1000;
+	width: 360px;
+	max-width: calc(100vw - 32px);
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	box-shadow: var(--color-shadow-lg);
+	animation: popupIn 0.18s cubic-bezier(0.4, 0, 0.2, 1) both;
+	overflow: hidden;
+}
+
+@keyframes popupIn {
+	from {
+		opacity: 0;
+		transform: translateY(-6px) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+.item-reply-popup-header {
+	display: flex;
 	align-items: center;
-	justify-content: center;
+	gap: 0.5rem;
+	padding: 0.6rem 0.75rem 0.5rem;
+	border-bottom: 1px solid var(--color-border-light);
+}
+
+.item-reply-popup-title {
+	flex: 1;
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
+.item-reply-popup-close {
 	background: none;
 	border: none;
 	cursor: pointer;
+	color: var(--color-text-tertiary);
 	font-size: 0.85rem;
-	padding: 0.1em 0.3em;
-	margin-left: 0.4rem;
+	padding: 0.15rem 0.3rem;
 	border-radius: var(--radius-sm);
-	opacity: 0.4;
-	transition: opacity var(--transition-fast), background var(--transition-fast);
-	vertical-align: middle;
 	line-height: 1;
+	transition: color var(--transition-fast);
 }
 
-.item-comment-btn:hover {
-	opacity: 1;
-	background: var(--color-accent-bg);
+.item-reply-popup-close:hover {
+	color: var(--color-text);
+}
+
+.item-reply-popup-context {
+	padding: 0.55rem 0.75rem;
+	font-size: 0.78rem;
+	color: var(--color-text-secondary);
+	background: var(--color-surface-hover);
+	border-bottom: 1px solid var(--color-border-light);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.item-reply-popup-textarea {
+	width: 100%;
+	padding: 0.6rem 0.75rem;
+	font-family: inherit;
+	font-size: 0.85rem;
+	line-height: 1.5;
+	border: none;
+	resize: vertical;
+	color: var(--color-text);
+	background: var(--color-surface);
+	min-height: 3.2rem;
+	outline: none;
+}
+
+.item-reply-popup-textarea:focus {
+	background: var(--color-surface);
+}
+
+.item-reply-popup-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.5rem;
+	padding: 0.4rem 0.75rem 0.6rem;
+	border-top: 1px solid var(--color-border-light);
+}
+
+.item-reply-popup-cancel {
+	padding: 0.4rem 0.75rem;
+	font-size: 0.8rem;
+	font-weight: 500;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+	background: var(--color-surface);
+	color: var(--color-text-secondary);
+	transition: all var(--transition-fast);
+	line-height: 1.4;
+}
+
+.item-reply-popup-cancel:hover {
+	background: var(--color-surface-hover);
+	color: var(--color-text);
+}
+
+.item-reply-popup-status {
+	display: block;
+	padding: 0 0.75rem 0.5rem;
+	font-size: 0.75rem;
+	min-height: 1.2rem;
+}
+
+.item-reply-popup-status.saving {
+	color: var(--color-text-secondary);
+}
+
+.item-reply-popup-status.success {
+	color: var(--color-success);
+}
+
+.item-reply-popup-status.error {
+	color: var(--color-danger);
 }
 
 .response-panel.collapsed .response-body {

@@ -50,11 +50,7 @@
 			</div>
 
 			<div class="message-compose" id="message-compose">
-				<div class="compose-item-ref" id="compose-item-ref" style="display:none">
-					<span id="compose-item-ref-label"></span>
-					<button class="compose-clear-ref" onclick="clearItemRef()">✕</button>
-				</div>
-				<textarea class="compose-textarea" id="compose-text" rows="3" placeholder="Add to the discussion…"></textarea>
+		<textarea class="compose-textarea" id="compose-text" rows="3" placeholder="Add to the discussion…"></textarea>
 				<div class="compose-actions">
 					<button class="compose-submit-btn" id="compose-submit" onclick="sendMessage()">Send</button>
 					<span class="compose-status" id="compose-status"></span>
@@ -175,42 +171,204 @@
 		return div.innerHTML;
 	}
 
-	/* ── Comment buttons on plan items ── */
+	/* ── Click-to-comment popup on plan items ── */
 
+	let replyPopup = null;
 	let currentItemRef = "";
 
 	document.addEventListener("DOMContentLoaded", function() {
-		// Add comment buttons to all items by positional index
+		// Create the popup element once
+		replyPopup = document.createElement("div");
+		replyPopup.className = "item-reply-popup";
+		replyPopup.id = "item-reply-popup";
+		replyPopup.style.display = "none";
+		replyPopup.innerHTML =
+			'<div class="item-reply-popup-arrow"></div>' +
+			'<div class="item-reply-popup-header">' +
+				'<span class="item-reply-popup-title">Reply to item</span>' +
+				'<button class="item-reply-popup-close" id="item-reply-popup-close">✕</button>' +
+			'</div>' +
+			'<div class="item-reply-popup-context" id="item-reply-context"></div>' +
+			'<textarea class="item-reply-popup-textarea" id="item-reply-textarea" rows="3" placeholder="Type your response…"></textarea>' +
+			'<div class="item-reply-popup-actions">' +
+				'<button class="item-reply-popup-cancel" id="item-reply-popup-cancel">Cancel</button>' +
+				'<button class="compose-submit-btn" id="item-reply-submit">Add to Discussion</button>' +
+			'</div>' +
+			'<span class="item-reply-popup-status" id="item-reply-popup-status"></span>';
+		document.body.appendChild(replyPopup);
+
+		// Close popup when clicking the close button or cancel
+		document.getElementById("item-reply-popup-close").addEventListener("click", closeReplyPopup);
+		document.getElementById("item-reply-popup-cancel").addEventListener("click", closeReplyPopup);
+
+		// Submit handler
+		document.getElementById("item-reply-submit").addEventListener("click", submitItemReply);
+
+		// Click on items to open the popup
 		document.querySelectorAll("[data-item-idx]").forEach(function(el) {
-			const moduleEl = el.closest("[data-module-idx]");
-			if (!moduleEl) return;
-			const moduleIdx = moduleEl.dataset.moduleIdx;
-			const itemIdx = el.dataset.itemIdx;
-			const pos = moduleIdx + ":" + itemIdx;
-			const commentBtn = document.createElement("button");
-			commentBtn.className = "item-comment-btn";
-			commentBtn.title = "Comment on this item";
-			commentBtn.textContent = "💬";
-			commentBtn.onclick = function(e) {
-				e.stopPropagation();
-				setItemRef(pos, el.textContent.trim().substring(0, 60));
-			};
-			el.appendChild(commentBtn);
+			el.classList.add("item-highlightable");
+			el.addEventListener("click", function(e) {
+				// Don't open if clicking a link, button, checkbox, etc.
+				if (e.target.tagName === "A" || e.target.tagName === "BUTTON" || e.target.tagName === "INPUT") return;
+				if (e.target.closest("button") || e.target.closest("input")) return;
+
+				const moduleEl = el.closest("[data-module-idx]");
+				if (!moduleEl) return;
+				const moduleIdx = moduleEl.dataset.moduleIdx;
+				const itemIdx = el.dataset.itemIdx;
+				const pos = moduleIdx + ":" + itemIdx;
+				const label = el.textContent.trim().substring(0, 120);
+				openReplyPopup(el, pos, label);
+			});
+		});
+
+		// Close popup on Escape
+		document.addEventListener("keydown", function(e) {
+			if (e.key === "Escape" && replyPopup.style.display !== "none") {
+				closeReplyPopup();
+			}
+		});
+
+		// Close popup when clicking outside
+		document.addEventListener("mousedown", function(e) {
+			if (replyPopup.style.display === "none") return;
+			if (!replyPopup.contains(e.target) && !e.target.closest("[data-item-idx].item-selected")) {
+				closeReplyPopup();
+			}
 		});
 	});
 
-	function setItemRef(itemId, label) {
-		currentItemRef = itemId;
-		const refBar = document.getElementById("compose-item-ref");
-		const refLabel = document.getElementById("compose-item-ref-label");
-		refBar.style.display = "flex";
-		refLabel.textContent = "Replying to: " + label;
-		document.getElementById("compose-text").focus();
+	function openReplyPopup(anchorEl, itemRef, label) {
+		currentItemRef = itemRef;
+
+		// Remove previous selection highlight
+		document.querySelectorAll(".item-selected").forEach(function(el) {
+			el.classList.remove("item-selected");
+		});
+		anchorEl.classList.add("item-selected");
+
+		// Set context text
+		document.getElementById("item-reply-context").textContent = label;
+
+		// Clear textarea and status
+		document.getElementById("item-reply-textarea").value = "";
+		document.getElementById("item-reply-popup-status").textContent = "";
+		document.getElementById("item-reply-submit").disabled = false;
+
+		// Position the popup
+		const rect = anchorEl.getBoundingClientRect();
+		const popupW = 360;
+		const popupH = 260;
+		const gap = 8;
+
+		let left = rect.right + gap;
+		let top = rect.top;
+
+		// Prevent right overflow
+		if (left + popupW > window.innerWidth - 16) {
+			left = Math.max(16, rect.left - popupW - gap);
+		}
+
+		// Prevent bottom overflow
+		if (top + popupH > window.innerHeight - 16) {
+			top = Math.max(16, window.innerHeight - popupH - 16);
+		}
+
+		// Prevent top overflow
+		if (top < 16) {
+			top = 16;
+		}
+
+		replyPopup.style.left = left + "px";
+		replyPopup.style.top = top + "px";
+		replyPopup.style.display = "";
+
+		// Focus the textarea after layout settles
+		setTimeout(function() {
+			document.getElementById("item-reply-textarea").focus();
+		}, 50);
 	}
 
-	function clearItemRef() {
+	function closeReplyPopup() {
+		replyPopup.style.display = "none";
+		document.querySelectorAll(".item-selected").forEach(function(el) {
+			el.classList.remove("item-selected");
+		});
 		currentItemRef = "";
-		document.getElementById("compose-item-ref").style.display = "none";
+	}
+
+	function submitItemReply() {
+		const textarea = document.getElementById("item-reply-textarea");
+		const submitBtn = document.getElementById("item-reply-submit");
+		const statusEl = document.getElementById("item-reply-popup-status");
+		const text = textarea.value.trim();
+
+		if (!text) {
+			statusEl.textContent = "Please enter a response.";
+			statusEl.className = "item-reply-popup-status error";
+			return;
+		}
+
+		submitBtn.disabled = true;
+		statusEl.textContent = "Adding…";
+		statusEl.className = "item-reply-popup-status saving";
+
+		fetch("/api/plan/" + planID + "/messages", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				role: "human",
+				text: text,
+				item_ref: currentItemRef
+			})
+		})
+		.then(function(resp) {
+			if (!resp.ok) throw new Error("Server returned " + resp.status);
+			return resp.json();
+		})
+		.then(function(msg) {
+			statusEl.textContent = "Added.";
+			statusEl.className = "item-reply-popup-status success";
+
+			// Append message to discussion thread
+			appendMessageToThread(msg);
+
+			// Update message count
+			const countEl = document.getElementById("messages-count");
+			if (countEl) {
+				countEl.textContent = parseInt(countEl.textContent || "0") + 1;
+			}
+
+			// Close popup after brief delay
+			setTimeout(closeReplyPopup, 600);
+		})
+		.catch(function(err) {
+			statusEl.textContent = "Error: " + err.message;
+			statusEl.className = "item-reply-popup-status error";
+			submitBtn.disabled = false;
+		});
+	}
+
+	function appendMessageToThread(msg) {
+		const thread = document.getElementById("messages-thread");
+		const emptyEl = thread.querySelector(".messages-empty");
+		if (emptyEl) emptyEl.remove();
+
+		const div = document.createElement("div");
+		div.className = "message message-human";
+		div.dataset.messageId = msg.id;
+		div.innerHTML =
+			'<div class="message-avatar">👤</div>' +
+			'<div class="message-bubble">' +
+				'<div class="message-meta">' +
+					'<span class="message-role">You</span>' +
+					'<span class="message-time">' + msg.created_at + '</span>' +
+				'</div>' +
+				'<p class="message-text">' + escapeHtml(msg.text) + '</p>' +
+				(msg.item_ref ? '<span class="message-item-ref" data-item-ref="' + msg.item_ref + '">↳ referencing item ' + msg.item_ref + '</span>' : '') +
+			'</div>';
+		thread.appendChild(div);
+		div.scrollIntoView({ behavior: "smooth", block: "end" });
 	}
 
 	/* ── Send message ── */
@@ -236,8 +394,7 @@
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
 				role: "human",
-				text: text,
-				item_ref: currentItemRef || undefined
+				text: text
 			})
 		})
 		.then(function(resp) {
@@ -246,7 +403,6 @@
 		})
 		.then(function(msg) {
 			textarea.value = "";
-			clearItemRef();
 			statusEl.textContent = "Sent.";
 			statusEl.className = "compose-status success";
 
