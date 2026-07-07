@@ -71,6 +71,7 @@ func parseTemplates() (*template.Template, error) {
 	t := template.New("").Funcs(template.FuncMap{
 		"lower":   strings.ToLower,
 		"timeago": timeago,
+		"add":     func(a, b int) int { return a + b },
 	})
 	// Parse base layout
 	if _, err := t.ParseFiles("templates/base.html"); err != nil {

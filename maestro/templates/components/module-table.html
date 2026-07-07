@@ -1,0 +1,35 @@
+{{define "module-table"}}
+<div class="module-table-wrapper{{if .HideRowNum}} hide-row-num{{end}}">
+	<table class="module-table">
+		<thead>
+			<tr>
+				{{if not .HideRowNum}}<th class="row-num">#</th>{{end}}
+				{{range $col := .Columns}}
+				<th>{{$col.Heading}}</th>
+				{{end}}
+			</tr>
+		</thead>
+		<tbody>
+			{{range $ii, $item := .Items}}
+			<tr data-item-idx="{{$ii}}">
+				{{if not $.HideRowNum}}<td class="row-num">{{add $ii 1}}</td>{{end}}
+				{{range $col := $.Columns}}
+				<td>
+					{{- if eq $col.Key "text"}}{{$item.Text}}
+					{{- else if eq $col.Key "severity"}}{{$item.Severity}}
+					{{- else if eq $col.Key "impact"}}{{$item.Impact}}
+					{{- else if eq $col.Key "mitigation"}}{{$item.Mitigation}}
+					{{- else if eq $col.Key "status"}}{{$item.Status}}
+					{{- else if eq $col.Key "owner"}}{{$item.Owner}}
+					{{- else if eq $col.Key "changeType"}}{{$item.ChangeType}}
+					{{- else if eq $col.Key "answered"}}{{if $item.Answered}}Yes{{else}}No{{end}}
+					{{- else if eq $col.Key "answer"}}{{$item.Answer}}
+					{{- end -}}
+				</td>
+				{{end}}
+			</tr>
+			{{end}}
+		</tbody>
+	</table>
+</div>
+{{end}}

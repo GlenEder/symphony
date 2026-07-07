@@ -22,18 +22,43 @@ modules[8]:
     product,blocked,Sign off on final visual QA
     heading: Implementation Steps
     type: steps
-  - items[9]:
-      - text: — (em dash, U+2014)
-      - text: – (en dash, U+2013)
-      - text: → (right arrow, U+2192)
-      - text: ← (left arrow, U+2190)
-      - text: • (bullet, U+2022)
-      - text: … (ellipsis, U+2026)
-      - text: “” smart quotes (U+201C/U+201D)
-      - text: 🚀 (rocket, U+1F680)
-      - text: 🎯 (dart, U+1F3AF)
+  - type: table
     heading: Encoding Validation
-    type: items
+    columns[3]:
+      - heading: Character
+        key: text
+      - heading: Name
+        key: severity
+      - heading: Unicode
+        key: impact
+    items[9]:
+      - impact: U+2014
+        severity: em dash
+        text: —
+      - impact: U+2013
+        severity: en dash
+        text: –
+      - impact: U+2192
+        severity: right arrow
+        text: →
+      - impact: U+2190
+        severity: left arrow
+        text: ←
+      - impact: U+2022
+        severity: bullet
+        text: •
+      - impact: U+2026
+        severity: ellipsis
+        text: …
+      - impact: U+201C/U+201D
+        severity: smart quotes
+        text: “”
+      - impact: U+1F680
+        severity: rocket
+        text: 🚀
+      - impact: U+1F3AF
+        severity: dart
+        text: 🎯
   - items[4]{impact,mitigation,severity,text}:
     Users with visual impairments cannot use the app comfortably,Run automated contrast checks and adjust tokens before merging,high,Dark mode color contrast may not meet WCAG AA standards
     Janky scrolling and reduced frame rate on older devices,Add a @supports check and fallback solid background,medium,Backdrop-filter performance on low-end hardware

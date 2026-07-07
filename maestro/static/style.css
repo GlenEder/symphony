@@ -467,6 +467,66 @@ main {
 	border-bottom: none;
 }
 
+/* ── Table Module ── */
+
+.module-table-wrapper {
+	overflow-x: auto;
+	margin: calc(-1 * var(--space-sm)) calc(-1 * var(--space-lg));
+	width: auto;
+}
+
+.module-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.9rem;
+}
+
+.module-table thead {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+}
+
+.module-table th {
+	background: var(--color-surface-hover);
+	font-weight: 600;
+	text-align: left;
+	padding: var(--space-sm) var(--space-md);
+	border: 1px solid var(--color-border);
+	white-space: nowrap;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--color-text-secondary);
+}
+
+.module-table td {
+	padding: var(--space-sm) var(--space-md);
+	border: 1px solid var(--color-border);
+	vertical-align: top;
+}
+
+.module-table tbody tr:nth-child(even) {
+	background: var(--color-overlay);
+}
+
+.module-table tbody tr:hover {
+	background: var(--color-surface-hover);
+}
+
+.module-table .row-num {
+	width: 2.5rem;
+	min-width: 2.5rem;
+	text-align: right;
+	color: var(--color-text-tertiary);
+	font-variant-numeric: tabular-nums;
+	font-size: 0.8rem;
+}
+
+.hide-row-num .row-num {
+	display: none;
+}
+
 /* ── Criteria ── */
 
 .criteria-label {

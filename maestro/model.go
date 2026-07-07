@@ -25,11 +25,19 @@ type Message struct {
 	CreatedAt string `json:"created_at"`
 }
 
+// Column defines a single column in a table module.
+type Column struct {
+	Heading string `json:"heading"`
+	Key     string `json:"key"`
+}
+
 // Module is a typed section of a plan.
 type Module struct {
-	Type    string `json:"type"`
-	Heading string `json:"heading"`
-	Items   []Item `json:"items"`
+	Type       string   `json:"type"`
+	Heading    string   `json:"heading"`
+	Items      []Item   `json:"items"`
+	Columns    []Column `json:"columns,omitempty"`
+	HideRowNum bool     `json:"hideRowNum,omitempty"`
 }
 
 // Item is a single entry within a module.
@@ -56,9 +64,11 @@ type FlatPlan struct {
 }
 
 type FlatModule struct {
-	Type    string     `json:"type"`
-	Heading string     `json:"heading"`
-	Items   []FlatItem `json:"items"`
+	Type       string       `json:"type"`
+	Heading    string       `json:"heading"`
+	Items      []FlatItem   `json:"items"`
+	Columns    []Column     `json:"columns,omitempty"`
+	HideRowNum bool         `json:"hideRowNum,omitempty"`
 }
 
 type FlatItem struct {
@@ -82,7 +92,7 @@ func toFlatPlan(p *Plan) FlatPlan {
 		Messages:  p.Messages,
 	}
 	for _, m := range p.Modules {
-		fm := FlatModule{Type: m.Type, Heading: m.Heading}
+		fm := FlatModule{Type: m.Type, Heading: m.Heading, Columns: m.Columns, HideRowNum: m.HideRowNum}
 		for _, it := range m.Items {
 			fm.Items = append(fm.Items, FlatItem{
 				Text:       it.Text,

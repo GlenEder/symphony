@@ -16,6 +16,8 @@
 			{{template "module-notes" .Items}}
 		{{else if eq .Type "questions"}}
 			{{template "module-questions" .Items}}
+		{{else if eq .Type "table"}}
+			{{template "module-table" .}}
 		{{else}}
 			{{template "module-generic" .Items}}
 		{{end}}
