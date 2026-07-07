@@ -1,7 +1,7 @@
 messages[2]{created_at,id,item_ref,role,text}:
   "2026-07-06T18:24:57Z",msg_18bfc68fafe6ac98,"6:2",human,my response
   "2026-07-06T18:37:24Z",msg_18bfc73d7aa36d88,"6:2",human,testing
-modules[7]:
+modules[8]:
   - type: criteria
     heading: Acceptance Criteria
     items[5]:
@@ -22,6 +22,18 @@ modules[7]:
     product,blocked,Sign off on final visual QA
     heading: Implementation Steps
     type: steps
+  - items[9]:
+      - text: — (em dash, U+2014)
+      - text: – (en dash, U+2013)
+      - text: → (right arrow, U+2192)
+      - text: ← (left arrow, U+2190)
+      - text: • (bullet, U+2022)
+      - text: … (ellipsis, U+2026)
+      - text: “” smart quotes (U+201C/U+201D)
+      - text: 🚀 (rocket, U+1F680)
+      - text: 🎯 (dart, U+1F3AF)
+    heading: Encoding Validation
+    type: items
   - items[4]{impact,mitigation,severity,text}:
     Users with visual impairments cannot use the app comfortably,Run automated contrast checks and adjust tokens before merging,high,Dark mode color contrast may not meet WCAG AA standards
     Janky scrolling and reduced frame rate on older devices,Add a @supports check and fallback solid background,medium,Backdrop-filter performance on low-end hardware
