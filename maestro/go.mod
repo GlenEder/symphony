@@ -8,4 +8,6 @@ require (
 	github.com/sstraus/toon_go/toon v1.0.0
 )
 
+replace github.com/sstraus/toon_go/toon v1.0.0 => ./lib/toon
+
 require golang.org/x/sys v0.13.0 // indirect
