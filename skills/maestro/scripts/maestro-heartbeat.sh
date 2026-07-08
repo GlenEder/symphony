@@ -5,7 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELP_MESSAGE="Usage: maestro-heartbeat.sh --plan-name <name> [options]
 
   Start a background heartbeat loop for a Maestro plan so the server knows
-  the agent is still listening. Runs until killed or the --timeout expires.
+  the agent is still listening. Runs until killed, the --timeout expires,
+  or the parent process (agent/shell) exits.
   Saves its PID to a file so subsequent invocations reuse the same process.
 
   --plan-name <name>        Plan name (required, matches .toon filename without extension)
@@ -81,6 +82,10 @@ fi
 pid_file="$maestro_dir/.maestro-hb-$plan_name.pid"
 base_url="http://localhost:$port"
 
+# Capture the PID of the process that launched us (agent/shell)
+# so the heartbeat can self-destruct if the parent dies.
+original_ppid=$PPID
+
 # -- Stop mode ------------------------------------------------------------
 
 if [[ "$stop" == true ]]; then
@@ -126,6 +131,15 @@ done
   fi
 
   while true; do
+    # Self-destruct if the parent process (agent/shell) is gone
+    if ! kill -0 "$original_ppid" 2>/dev/null; then
+      rm -f "$pid_file"
+      curl -s -X POST "$base_url/api/agent/$plan_name/status" \
+        -H "Content-Type: application/json" \
+        -d '{"status":"offline"}' >/dev/null 2>&1 || true
+      exit 0
+    fi
+
     curl -s -X POST "$base_url/api/agent/$plan_name/heartbeat" >/dev/null 2>&1 || true
     sleep "$interval"
   done
