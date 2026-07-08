@@ -20,17 +20,25 @@ go build -o maestro . && ./maestro
 go run .
 ```
 
-### Listen Script
+### Scripts
 
-The `maestro-listen.sh` script encapsulates the feedback loop (heartbeat + file watching):
+Two scripts in `scripts/` help run feedback sessions:
+
+**`maestro-heartbeat.sh`** — starts a background heartbeat so the server knows the agent is listening. Runs until stopped or the plan is approved.
 
 ```bash
-./scripts/maestro-listen.sh --plan-id demo --port 8080 --timeout 7200
+scripts/maestro-heartbeat.sh --plan-name demo --port 8080
+# Stop it when done:
+scripts/maestro-heartbeat.sh --plan-name demo --stop
 ```
 
-See `./scripts/maestro-listen.sh --help` for all options.
+**`maestro-listen.sh`** — watches the plan file for changes using fswatch (or stat polling). Outputs plan JSON on change.
 
-Run from the project root or `maestro/` directory. The script auto-detects `maestro_dir` relative to cwd.
+```bash
+scripts/maestro-listen.sh --plan-name demo --port 8080 --timeout 7200
+```
+
+Run both from the project root or `maestro/` dir. See `--help` on each for all options.
 
 ### Configuration
 
@@ -408,35 +416,41 @@ After crafting a plan (via `plan-modules` or manually), start a feedback session
    > You can comment on individual items by clicking them, send general feedback in the discussion sidebar, and click "Approve Plan" when satisfied.
    > I'll wait here for your feedback.
 
-### 2. The Listen Loop
+### 2. Start the Heartbeat
 
-Now enter the feedback loop. The plan file on disk (`maestro/plans/{plan-id}.toon`) is updated by the Maestro server whenever a message is added or the state changes (because `persistPlan()` rewrites the file). Use the bundled `maestro-listen.sh` script to watch for changes — it handles heartbeat, file watching (fswatch with stat polling fallback), and cleanup all in one call.
+Before entering the listen loop, start a background heartbeat so the server tracks the agent as **listening**:
 
 ```bash
-# maestro-listen.sh handles:
-#   - Background heartbeat every 15s (POST /api/agent/{id}/heartbeat)
-#   - File watch via fswatch (primary) or stat mtime polling (fallback)
-#   - On file change: fetches plan JSON from the API and outputs to stdout
-#   - On exit: kills heartbeat, sets agent to offline
-#
-# Outputs plan JSON on change, exits with code 2 on timeout.
-scripts/maestro-listen.sh --plan-id "{plan-id}" --port 8080 --timeout 7200
+scripts/maestro-heartbeat.sh --plan-name "{plan-name}" --port 8080 --interval 15
 ```
 
-**Flags:**
+This runs in the background and persists across listen loop iterations. Stop it when the plan is approved:
+
+```bash
+scripts/maestro-heartbeat.sh --plan-name "{plan-name}" --stop
+```
+
+### 3. The Listen Loop
+
+Now enter the feedback loop. The plan file on disk (`maestro/plans/{plan-name}.toon`) is updated by the Maestro server whenever a message is added or the state changes (because `persistPlan()` rewrites the file). Use `maestro-listen.sh` to watch for changes:
+
+```bash
+# Blocks until the plan file changes (zero token burn during idle)
+# Outputs plan JSON on change, exits with code 2 on timeout.
+scripts/maestro-listen.sh --plan-name "{plan-name}" --port 8080 --timeout 7200
+```
+
+**Flag reference (`maestro-listen.sh`):**
 
 | Flag | Default | Description |
 |------|---------|-------------|
   | `--plan-name` | *(required)* | Plan name to watch |
 | `--maestro-dir` | `.` | Path to maestro directory |
 | `--port` | `8080` | Maestro server port |
-| `--heartbeat-interval` | `15` | Seconds between heartbeats |
-| `--timeout` | `7200` | Max seconds to wait for change (0 = no limit) |
+| `--timeout` | `7200` | Max seconds to wait (0 = no limit) |
 | `--poll-fallback-sleep` | `2` | Seconds between stat polls (fallback only) |
 
 Exit codes: `0` = change detected (plan JSON on stdout), `1` = error, `2` = timeout.
-
-The script is at `scripts/maestro-listen.sh` inside the skill directory (`skills/maestro/`).
 
 **Status transitions are automatic:**
 - When the **user** sends a message, the server auto-sets the dot to **thinking** (pulsing blue).
@@ -444,7 +458,7 @@ The script is at `scripts/maestro-listen.sh` inside the skill directory (`skills
 - The agent only needs to set **offline** explicitly (e.g. when the plan is approved).
 - No more manual `thinking`/`listening` status calls needed.
 
-### 3. Process Changes
+### 4. Process Changes
 
 After `maestro-listen.sh` returns, the plan JSON is already on stdout (or pipe it in). Parse it with `jq` or inline bash. On each wake, compare against the previous state (tracked in variables you maintain throughout the loop). Detect:
 
@@ -454,7 +468,7 @@ After `maestro-listen.sh` returns, the plan JSON is already on stdout (or pipe i
 **Example: piping the listen output into your processor:**
 
 ```bash
-plan_json=$(scripts/maestro-listen.sh --plan-id "{plan-id}" --port 8080 --timeout 7200)
+plan_json=$(scripts/maestro-listen.sh --plan-name "{plan-name}" --port 8080 --timeout 7200)
 # Now parse $plan_json...
 ```
 
