@@ -32,7 +32,6 @@ func (h *Hub) Subscribe(planID string, conn *websocket.Conn) {
 		h.clients[planID] = make(map[*websocket.Conn]bool)
 	}
 	h.clients[planID][conn] = true
-	log.Printf("ws: %s subscribed to %s", conn.RemoteAddr(), planID)
 }
 
 // Unsubscribe removes a connection.

@@ -208,8 +208,8 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub) {
 		w.Write(fp.JSON())
 	})
 
-	// WebSocket for plan updates
-	http.HandleFunc("/ws/plan/", hub.handleWS(store))
+	// WebSocket for plan updates (Go 1.22+ parameterized pattern)
+	http.HandleFunc("/ws/plan/{id}", hub.handleWS(store))
 
 	// Redirect root to /plans
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

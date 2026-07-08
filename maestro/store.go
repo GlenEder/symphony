@@ -184,14 +184,19 @@ func (s *PlanStore) SetState(id, state string) error {
 	}
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	plan, ok := s.plans[id]
 	if !ok {
+		s.mu.Unlock()
 		return fmt.Errorf("plan not found: %s", id)
 	}
 	plan.State = state
-	return s.persistPlan(id)
+	s.mu.Unlock()
+
+	if err := s.persistPlan(id); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Get returns a plan by its ID.

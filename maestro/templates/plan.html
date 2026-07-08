@@ -69,6 +69,7 @@
 	const planID = "{{.PlanID}}";
 	const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
 	const ws = new WebSocket(wsProto + "//" + location.host + "/ws/plan/" + planID);
+	var lastModulesJson = null;
 
 	/* ── WebSocket — incremental updates ── */
 
@@ -76,6 +77,7 @@
 		const plan = JSON.parse(event.data);
 		updateMessages(plan.messages || []);
 		updateModules(plan.modules);
+		updateTimestamp(plan.updated_at);
 		updateState(plan.state);
 	};
 
@@ -136,11 +138,333 @@
 		}
 	}
 
-	function updateModules() {
-		// Full modules refresh is handled by the server-side render on page load.
-		// For agent rewrites, we reload the page to get fresh server-rendered modules.
-		// This keeps the template logic in Go rather than duplicating it in JS.
-		location.reload();
+	function updateModules(modules) {
+		const modulesJson = JSON.stringify(modules);
+		// Skip reload on initial handshake — modules match what's already rendered
+		if (lastModulesJson === null) {
+			lastModulesJson = modulesJson;
+			return;
+		}
+		if (modulesJson === lastModulesJson) return;
+		lastModulesJson = modulesJson;
+
+		// Re-render modules in-place
+		const container = document.getElementById("modules-container");
+		container.innerHTML = "";
+		modules.forEach(function(mod, mi) {
+			const wrapper = document.createElement("div");
+			wrapper.dataset.moduleIdx = mi;
+			wrapper.appendChild(renderModule(mod));
+			container.appendChild(wrapper);
+		});
+		// Re-attach highlight class to items
+		container.querySelectorAll("[data-item-idx]").forEach(addHighlightClass);
+	}
+
+	function renderModule(mod) {
+		const section = document.createElement("section");
+		section.className = "module module-" + mod.type;
+		section.dataset.moduleType = mod.type;
+
+		const heading = document.createElement("h2");
+		heading.className = "module-heading";
+		heading.textContent = mod.heading;
+		section.appendChild(heading);
+
+		const body = document.createElement("div");
+		body.className = "module-body";
+
+		switch (mod.type) {
+			case "criteria": body.appendChild(renderCriteria(mod.items)); break;
+			case "steps": body.appendChild(renderSteps(mod.items)); break;
+			case "risks": body.appendChild(renderRisks(mod.items)); break;
+			case "assumptions": body.appendChild(renderAssumptions(mod.items)); break;
+			case "changes": body.appendChild(renderChanges(mod.items)); break;
+			case "notes": body.appendChild(renderNotes(mod.items)); break;
+			case "questions": body.appendChild(renderQuestions(mod.items)); break;
+			case "table": body.appendChild(renderTable(mod)); break;
+			default: body.appendChild(renderGeneric(mod.items));
+		}
+
+		section.appendChild(body);
+		return section;
+	}
+
+	function renderCriteria(items) {
+		const ul = document.createElement("ul");
+		ul.className = "item-list criteria-list";
+		(items || []).forEach(function(item, ii) {
+			const li = document.createElement("li");
+			li.className = "criteria-item";
+			li.dataset.itemIdx = ii;
+
+			const label = document.createElement("label");
+			label.className = "criteria-label";
+
+			const cb = document.createElement("input");
+			cb.type = "checkbox";
+			cb.className = "criteria-checkbox";
+			cb.disabled = true;
+			if (item.answered) cb.checked = true;
+			label.appendChild(cb);
+
+			const span = document.createElement("span");
+			span.className = "criteria-text";
+			span.textContent = item.text;
+			label.appendChild(span);
+
+			li.appendChild(label);
+			ul.appendChild(li);
+		});
+		return ul;
+	}
+
+	function renderSteps(items) {
+		const ol = document.createElement("ol");
+		ol.className = "item-list steps-list";
+		(items || []).forEach(function(item, ii) {
+			const li = document.createElement("li");
+			li.className = "step-item";
+			li.dataset.itemIdx = ii;
+
+			const content = document.createElement("div");
+			content.className = "step-content";
+
+			const span = document.createElement("span");
+			span.className = "step-text";
+			span.textContent = item.text;
+			content.appendChild(span);
+
+			if (item.owner) {
+				const owner = document.createElement("span");
+				owner.className = "step-owner";
+				owner.textContent = item.owner;
+				content.appendChild(owner);
+			}
+
+			li.appendChild(content);
+
+			if (item.status) {
+				const badge = document.createElement("span");
+				badge.className = "badge badge-" + item.status;
+				badge.textContent = item.status;
+				li.appendChild(badge);
+			}
+
+			ol.appendChild(li);
+		});
+		return ol;
+	}
+
+	function renderRisks(items) {
+		const div = document.createElement("div");
+		div.className = "risk-list";
+		(items || []).forEach(function(item, ii) {
+			const card = document.createElement("div");
+			card.className = "risk-card" + (item.severity ? " risk-" + item.severity : "");
+			card.dataset.itemIdx = ii;
+
+			const header = document.createElement("div");
+			header.className = "risk-header";
+
+			if (item.severity) {
+				const sev = document.createElement("span");
+				sev.className = "risk-severity badge badge-" + item.severity;
+				sev.textContent = item.severity;
+				header.appendChild(sev);
+			}
+
+			const text = document.createElement("span");
+			text.className = "risk-text";
+			text.textContent = item.text;
+			header.appendChild(text);
+
+			card.appendChild(header);
+
+			if (item.impact) {
+				const p = document.createElement("p");
+				p.className = "risk-detail";
+				p.innerHTML = "<strong>Impact:</strong> " + escapeHtml(item.impact);
+				card.appendChild(p);
+			}
+
+			if (item.mitigation) {
+				const p = document.createElement("p");
+				p.className = "risk-detail";
+				p.innerHTML = "<strong>Mitigation:</strong> " + escapeHtml(item.mitigation);
+				card.appendChild(p);
+			}
+
+			div.appendChild(card);
+		});
+		return div;
+	}
+
+	function renderAssumptions(items) {
+		const ul = document.createElement("ul");
+		ul.className = "item-list assumptions-list";
+		(items || []).forEach(function(item, ii) {
+			const li = document.createElement("li");
+			li.className = "assumption-item";
+			li.dataset.itemIdx = ii;
+			li.textContent = item.text;
+			ul.appendChild(li);
+		});
+		return ul;
+	}
+
+	function renderChanges(items) {
+		const ul = document.createElement("ul");
+		ul.className = "item-list changes-list";
+		(items || []).forEach(function(item, ii) {
+			const li = document.createElement("li");
+			li.className = "change-item";
+			li.dataset.itemIdx = ii;
+
+			const code = document.createElement("code");
+			code.className = "change-file";
+			code.textContent = item.text;
+			li.appendChild(code);
+
+			if (item.changeType) {
+				const badge = document.createElement("span");
+				badge.className = "badge badge-type";
+				badge.textContent = item.changeType;
+				li.appendChild(badge);
+			}
+
+			ul.appendChild(li);
+		});
+		return ul;
+	}
+
+	function renderNotes(items) {
+		const div = document.createElement("div");
+		div.className = "notes-block";
+		(items || []).forEach(function(item, ii) {
+			const p = document.createElement("p");
+			p.className = "note-item";
+			p.dataset.itemIdx = ii;
+			p.textContent = item.text;
+			div.appendChild(p);
+		});
+		return div;
+	}
+
+	function renderQuestions(items) {
+		const ul = document.createElement("ul");
+		ul.className = "item-list questions-list";
+		(items || []).forEach(function(item, ii) {
+			const li = document.createElement("li");
+			li.className = "question-item" + (item.answered ? " question-answered" : "");
+			li.dataset.itemIdx = ii;
+
+			const header = document.createElement("div");
+			header.className = "question-header";
+
+			const status = document.createElement("span");
+			status.className = "question-status";
+			status.textContent = item.answered ? "✓" : "?";
+			header.appendChild(status);
+
+			const text = document.createElement("span");
+			text.className = "question-text";
+			text.textContent = item.text;
+			header.appendChild(text);
+
+			li.appendChild(header);
+
+			if (!item.answered) {
+				const ta = document.createElement("textarea");
+				ta.className = "question-input";
+				ta.placeholder = "Type your answer…";
+				ta.rows = 2;
+				li.appendChild(ta);
+			}
+
+			if (item.answer) {
+				const p = document.createElement("p");
+				p.className = "question-answer";
+				p.innerHTML = "<strong>Answer:</strong> " + escapeHtml(item.answer);
+				li.appendChild(p);
+			}
+
+			ul.appendChild(li);
+		});
+		return ul;
+	}
+
+	function renderTable(mod) {
+		const wrapper = document.createElement("div");
+		wrapper.className = "module-table-wrapper" + (mod.hideRowNum ? " hide-row-num" : "");
+
+		const table = document.createElement("table");
+		table.className = "module-table";
+
+		const thead = document.createElement("thead");
+		const trHead = document.createElement("tr");
+		if (!mod.hideRowNum) {
+			const th = document.createElement("th");
+			th.className = "row-num";
+			th.textContent = "#";
+			trHead.appendChild(th);
+		}
+		(mod.columns || []).forEach(function(col) {
+			const th = document.createElement("th");
+			th.textContent = col.heading;
+			trHead.appendChild(th);
+		});
+		thead.appendChild(trHead);
+		table.appendChild(thead);
+
+		const tbody = document.createElement("tbody");
+		(mod.items || []).forEach(function(item, ii) {
+			const tr = document.createElement("tr");
+			tr.dataset.itemIdx = ii;
+
+			if (!mod.hideRowNum) {
+				const td = document.createElement("td");
+				td.className = "row-num";
+				td.textContent = ii + 1;
+				tr.appendChild(td);
+			}
+
+			(mod.columns || []).forEach(function(col) {
+				const td = document.createElement("td");
+				switch (col.key) {
+					case "text": td.textContent = item.text || ""; break;
+					case "severity": td.textContent = item.severity || ""; break;
+					case "impact": td.textContent = item.impact || ""; break;
+					case "mitigation": td.textContent = item.mitigation || ""; break;
+					case "status": td.textContent = item.status || ""; break;
+					case "owner": td.textContent = item.owner || ""; break;
+					case "changeType": td.textContent = item.changeType || ""; break;
+					case "answered": td.textContent = item.answered ? "Yes" : "No"; break;
+					case "answer": td.textContent = item.answer || ""; break;
+					default: td.textContent = "";
+				}
+				tr.appendChild(td);
+			});
+
+			tbody.appendChild(tr);
+		});
+		table.appendChild(tbody);
+
+		wrapper.appendChild(table);
+		return wrapper;
+	}
+
+	function renderGeneric(items) {
+		const ul = document.createElement("ul");
+		ul.className = "item-list";
+		(items || []).forEach(function(item, ii) {
+			const li = document.createElement("li");
+			li.className = "generic-item";
+			li.dataset.itemIdx = ii;
+			li.textContent = item.text;
+			ul.appendChild(li);
+		});
+		return ul;
 	}
 
 	function updateState(state) {
@@ -164,6 +488,27 @@
 			btn.className = "approval-btn approve";
 			desc.textContent = "Approve this plan when the discussion is complete. Only human reviewers can approve a plan — this signals the agent to proceed.";
 		}
+	}
+
+	function escapeHtml(str) {
+		if (!updatedAt) return;
+		const el = document.querySelector(".plan-updated-at");
+		if (el) {
+			// UpdatedAt is in RFC3339 format, display as relative time
+			const date = new Date(updatedAt);
+			const now = new Date();
+			const diff = Math.floor((now - date) / 1000);
+			let rel;
+			if (diff < 60) rel = "just now";
+			else if (diff < 3600) rel = Math.floor(diff / 60) + "m ago";
+			else if (diff < 86400) rel = Math.floor(diff / 3600) + "h ago";
+			else rel = Math.floor(diff / 86400) + "d ago";
+			el.textContent = "Last updated " + rel;
+		}
+	}
+
+	function addHighlightClass(el) {
+		el.classList.add("item-highlightable");
 	}
 
 	function escapeHtml(str) {
@@ -205,23 +550,24 @@
 		// Submit handler
 		document.getElementById("item-reply-submit").addEventListener("click", submitItemReply);
 
-		// Click on items to open the popup
-		document.querySelectorAll("[data-item-idx]").forEach(function(el) {
-			el.classList.add("item-highlightable");
-			el.addEventListener("click", function(e) {
-				// Don't open if clicking a link, button, checkbox, etc.
-				if (e.target.tagName === "A" || e.target.tagName === "BUTTON" || e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-				if (e.target.closest("button") || e.target.closest("input")) return;
+		// Click on items to open the popup — delegated on modules container
+		var modContainer = document.getElementById("modules-container");
+		modContainer.addEventListener("click", function(e) {
+			var el = e.target.closest("[data-item-idx]");
+			if (!el) return;
+			// Don't open if clicking a link, button, checkbox, etc.
+			if (e.target.tagName === "A" || e.target.tagName === "BUTTON" || e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+			if (e.target.closest("button") || e.target.closest("input")) return;
 
-				const moduleEl = el.closest("[data-module-idx]");
-				if (!moduleEl) return;
-				const moduleIdx = moduleEl.dataset.moduleIdx;
-				const itemIdx = el.dataset.itemIdx;
-				const pos = moduleIdx + ":" + itemIdx;
-				const label = el.textContent.trim().substring(0, 120);
-				openReplyPopup(el, pos, label);
-			});
+			var moduleEl = el.closest("[data-module-idx]");
+			if (!moduleEl) return;
+			var moduleIdx = moduleEl.dataset.moduleIdx;
+			var itemIdx = el.dataset.itemIdx;
+			var pos = moduleIdx + ":" + itemIdx;
+			var label = el.textContent.trim().substring(0, 120);
+			openReplyPopup(el, pos, label);
 		});
+		modContainer.querySelectorAll("[data-item-idx]").forEach(addHighlightClass);
 
 		// Close popup on Escape
 		document.addEventListener("keydown", function(e) {
