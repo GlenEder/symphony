@@ -125,7 +125,7 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 					http.NotFound(w, r)
 					return
 				}
-				fp := toFlatPlan(plan)
+								fp := toFlatPlan(plan, agentState.GetStatus(parts[0]))
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				w.Write(fp.JSON())
@@ -139,7 +139,7 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 			// POST /api/plan/{id}/messages — add a message to the conversation thread
 			if msgID, ok := strings.CutSuffix(id, "/messages"); ok {
 				var body struct {
-					Role    string `json:"role"`
+					Role    string ` + json:"role"`
 					Text    string `json:"text"`
 					ItemRef string `json:"item_ref,omitempty"`
 				}
@@ -155,13 +155,21 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 					http.Error(w, "text is required", http.StatusBadRequest)
 					return
 				}
-				msg, err := store.AddMessage(msgID, body.Role, body.Text, body.ItemRef)
-				if err != nil {
-					log.Printf("add message error: %v", err)
-					http.Error(w, "internal error", http.StatusInternalServerError)
-					return
-				}
-				w.Header().Set("Content-Type", "application/json")
+			msg, err := store.AddMessage(msgID, body.Role, body.Text, body.ItemRef)
+			if err != nil {
+				log.Printf("add message error: %v", err)
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+
+			// Auto-transition agent status on messages
+			if body.Role == "human" {
+				agentState.SetThinking(msgID)
+			} else if body.Role == "agent" {
+				agentState.SetListening(msgID)
+			}
+
+			w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				json.NewEncoder(w).Encode(msg)
 				return
@@ -186,7 +194,7 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 					http.NotFound(w, r)
 					return
 				}
-				fp := toFlatPlan(plan)
+				fp := toFlatPlan(plan, agentState.GetStatus(stateID))
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				w.Write(fp.JSON())
@@ -203,13 +211,13 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 			http.NotFound(w, r)
 			return
 		}
-		fp := toFlatPlan(plan)
+		fp := toFlatPlan(plan, agentState.GetStatus(id))
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(fp.JSON())
 	})
 
 	// WebSocket for plan updates (Go 1.22+ parameterized pattern)
-	http.HandleFunc("/ws/plan/{id}", hub.handleWS(store))
+	http.HandleFunc("/ws/plan/{id}", hub.handleWS(store, agentState))
 
 	// API: agent heartbeat (agent calls this periodically while listening)
 	http.HandleFunc("POST /api/agent/{id}/heartbeat", func(w http.ResponseWriter, r *http.Request) {
@@ -223,7 +231,7 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	// API: agent status update (agent reports thinking/listening)
+	// API: agent status update (agent can only set offline; thinking/listening deprecated)
 	http.HandleFunc("POST /api/agent/{id}/status", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		if id == "" {
@@ -237,11 +245,16 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 			http.Error(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
-		if body.Status != StatusListening && body.Status != StatusThinking && body.Status != StatusOffline {
-			http.Error(w, "status must be 'listening', 'thinking', or 'offline'", http.StatusBadRequest)
+		switch body.Status {
+		case StatusOffline:
+			agentState.SetOffline(id)
+		case StatusThinking, StatusListening:
+			// Accept but ignore — deprecated. The app handles these transitions automatically.
+			log.Printf("DEPRECATED: agent %s called POST /api/agent/{id}/status with '%s' — thinking/listening are now automatic", id, body.Status)
+		default:
+			http.Error(w, "status must be 'offline'", http.StatusBadRequest)
 			return
 		}
-		agentState.SetStatus(id, body.Status)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))
 	})

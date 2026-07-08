@@ -33,18 +33,19 @@ func main() {
 
 	// Plan store
 	hub := NewHub()
+
+	// Agent state tracking (must be before store for onChange closure)
+	agentState := NewAgentState()
+
 	var store *PlanStore
 	store = NewPlanStore(plansDir, func(id string) {
 		if plan := store.Get(id); plan != nil {
-			hub.Broadcast(id, toFlatPlan(plan).JSON())
+			hub.Broadcast(id, toFlatPlan(plan, agentState.GetStatus(id)).JSON())
 		}
 	})
 	if err := store.LoadAll(); err != nil {
 		log.Fatalf("load plans: %v", err)
 	}
-
-	// Agent state tracking
-	agentState := NewAgentState()
 
 	// Background goroutine: clean stale agent states every 5s
 	go func() {

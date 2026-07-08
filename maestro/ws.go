@@ -49,6 +49,8 @@ func (as *AgentState) Heartbeat(planID string) {
 }
 
 // SetStatus sets the agent status for a plan.
+// Only "offline" is meaningful from external callers;
+// "thinking" and "listening" are set internally by the app.
 func (as *AgentState) SetStatus(planID, status string) {
 	as.mu.Lock()
 	defer as.mu.Unlock()
@@ -59,6 +61,21 @@ func (as *AgentState) SetStatus(planID, status string) {
 	}
 	st.Status = status
 	st.LastHeartbeat = time.Now()
+}
+
+// SetOffline sets the agent status to offline for a plan.
+func (as *AgentState) SetOffline(planID string) {
+	as.SetStatus(planID, StatusOffline)
+}
+
+// SetThinking sets the agent status to thinking.
+func (as *AgentState) SetThinking(planID string) {
+	as.SetStatus(planID, StatusThinking)
+}
+
+// SetListening sets the agent status to listening.
+func (as *AgentState) SetListening(planID string) {
+	as.SetStatus(planID, StatusListening)
 }
 
 // GetStatus returns the current agent status for a plan.
@@ -138,7 +155,7 @@ func (h *Hub) Broadcast(planID string, msg []byte) {
 }
 
 // handleWS handles WebSocket upgrade for a plan.
-func (h *Hub) handleWS(store *PlanStore) http.HandlerFunc {
+func (h *Hub) handleWS(store *PlanStore, agentState *AgentState) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		planID := r.PathValue("id")
 		if planID == "" {
@@ -156,7 +173,7 @@ func (h *Hub) handleWS(store *PlanStore) http.HandlerFunc {
 
 		// Send the current plan state immediately on connect
 		if plan := store.Get(planID); plan != nil {
-			fp := toFlatPlan(plan)
+			fp := toFlatPlan(plan, agentState.GetStatus(planID))
 			if err := conn.WriteMessage(websocket.TextMessage, fp.JSON()); err != nil {
 				log.Printf("ws initial write error: %v", err)
 				h.Unsubscribe(planID, conn)

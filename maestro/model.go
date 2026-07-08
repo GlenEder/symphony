@@ -55,12 +55,13 @@ type Item struct {
 
 // FlatPlan is the JSON-friendly version with less nesting for the API and WebSocket.
 type FlatPlan struct {
-	Title    string       `json:"title"`
-	Summary  string       `json:"summary"`
-	State    string       `json:"state"`
-	UpdatedAt string      `json:"updated_at,omitempty"`
-	Messages []Message    `json:"messages,omitempty"`
-	Modules  []FlatModule `json:"modules"`
+	Title       string       `json:"title"`
+	Summary     string       `json:"summary"`
+	State       string       `json:"state"`
+	AgentStatus string       `json:"agent_status"`
+	UpdatedAt   string       `json:"updated_at,omitempty"`
+	Messages    []Message    `json:"messages,omitempty"`
+	Modules     []FlatModule `json:"modules"`
 }
 
 type FlatModule struct {
@@ -83,13 +84,14 @@ type FlatItem struct {
 	ChangeType string `json:"changeType,omitempty"`
 }
 
-func toFlatPlan(p *Plan) FlatPlan {
+func toFlatPlan(p *Plan, agentStatus string) FlatPlan {
 	fp := FlatPlan{
-		Title:     p.Title,
-		Summary:   p.Summary,
-		State:     p.State,
-		UpdatedAt: p.UpdatedAt,
-		Messages:  p.Messages,
+		Title:       p.Title,
+		Summary:     p.Summary,
+		State:       p.State,
+		AgentStatus: agentStatus,
+		UpdatedAt:   p.UpdatedAt,
+		Messages:    p.Messages,
 	}
 	for _, m := range p.Modules {
 		fm := FlatModule{Type: m.Type, Heading: m.Heading, Columns: m.Columns, HideRowNum: m.HideRowNum}

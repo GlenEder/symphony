@@ -79,6 +79,7 @@
 		updateModules(plan.modules);
 		updateTimestamp(plan.updated_at);
 		updateState(plan.state);
+		updateAgentDot(plan.agent_status);
 	};
 
 	ws.onclose = function() {
