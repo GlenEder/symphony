@@ -10,7 +10,7 @@ HELP_MESSAGE="Usage: maestro-heartbeat.sh --plan-name <name> [options]
   Saves its PID to a file so subsequent invocations reuse the same process.
 
   --plan-name <name>        Plan name (required, matches .toon filename without extension)
-  --maestro-dir <path>      Path to maestro directory (default: .)
+  --maestro-dir <path>      Path to maestro directory (default: MAESTRO_DIR env or .)
   --port <port>             Maestro server port (default: 8080)
   --interval <s>            Seconds between heartbeats (default: 15)
   --timeout <s>             Max seconds to keep heartbeating (default: 0 = run forever)
@@ -22,7 +22,7 @@ Exit codes:
   1 - Error (bad args, API unreachable)"
 
 plan_name=""
-maestro_dir="."
+maestro_dir="${MAESTRO_DIR:-.}"
 port=8080
 interval=15
 timeout=0

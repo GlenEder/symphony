@@ -10,14 +10,14 @@ Maestro is a lightweight Go web server that serves structured planning documents
 
 ## Quick Start
 
+Make sure `maestro` is on your PATH (run `./setup.sh --add-to-path` from the repo root):
+
 ```bash
-cd maestro
+# Start the server from any directory
+maestro
 
-# Build and run with default settings (port 8080, plans/ directory)
-go build -o maestro . && ./maestro
-
-# Or run directly
-go run .
+# Or with custom settings
+PORT=9090 PLANS_DIR=/tmp/plans maestro
 ```
 
 ### Scripts
@@ -393,9 +393,9 @@ After crafting a plan (via `plan-modules` or manually), start a feedback session
 
 ### 1. Start the Session
 
-1. Build the server (if not already running):
+1. **Start the server** (assuming `maestro` is on your PATH — run `setup.sh` if not):
    ```bash
-   cd maestro && go build -o maestro . && ./maestro &
+   maestro &
    ```
    The server starts on port 8080 by default (`PORT` env to override).
 
@@ -445,7 +445,7 @@ scripts/maestro-listen.sh --plan-name "{plan-name}" --port 8080 --timeout 7200
 | Flag | Default | Description |
 |------|---------|-------------|
   | `--plan-name` | *(required)* | Plan name to watch |
-| `--maestro-dir` | `.` | Path to maestro directory |
+  | `--maestro-dir` | `MAESTRO_DIR` or `.` | Path to maestro directory |
 | `--port` | `8080` | Maestro server port |
 | `--timeout` | `7200` | Max seconds to wait (0 = no limit) |
 | `--poll-fallback-sleep` | `2` | Seconds between stat polls (fallback only) |
@@ -541,8 +541,7 @@ If the user presses Ctrl-C during the file-watch (the bash call fails/interrupts
 
 | Setting | Default | Description |
 |---|---|---|
-| `PLANS_DIR` | `maestro/plans` | Directory with `.toon` files |
-| `MAESTRO_PORT` | `8080` | Port for the Maestro server |
+| `MAESTRO_DIR` | *(none)* | Path to maestro directory (sets default for `--maestro-dir` flag) |
 
 For listen loop script flags, run `scripts/maestro-listen.sh --help`.
 
