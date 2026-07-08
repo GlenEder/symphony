@@ -19,6 +19,7 @@ While tailored for Maki, the individual skills are plain markdown and shell file
 
 - [Maki](https://github.com/gleneder/maki) coding agent installed and configured
 - Bash
+- [fswatch](https://emcrisostomo.github.io/fswatch/) (recommended, not required) — enables zero-token-wait feedback sessions in the Maestro skill. Falls back to `stat` polling if unavailable.
 
 ## Setup
 
