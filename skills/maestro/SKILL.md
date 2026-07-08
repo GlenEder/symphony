@@ -424,6 +424,15 @@ done
 
 Wrap the file-watch command in a bash tool call with a sufficiently long timeout. When the call returns, it means the plan file changed — proceed to the processor step below.
 
+**Agent status heartbeat:**
+Before entering the loop (and periodically while idle), send a heartbeat so the UI dot stays blue:
+
+```bash
+curl -s -X POST http://localhost:8080/api/agent/{plan-id}/heartbeat
+```
+
+Heartbeat every ~60s during idle (e.g., in a background bash loop or alongside the fswatch). The server times out after 10 minutes of no heartbeat.
+
 ### 3. Process Changes
 
 After the file-watch wakes you, poll the API for the current state:
@@ -445,24 +454,42 @@ Parse the JSON response. On each wake, compare against the previous state (track
 
 For each new human message you detect:
 
-1. If `item_ref` is set (e.g. `"2:1"` = module index 2, item index 1), resolve the referenced item from the plan's `modules` array for context.
-2. Formulate a response addressing the feedback.
-3. If the feedback implies a plan change, update the `.toon` file directly (the server's file watcher reloads it and broadcasts via WebSocket).
-4. Post your response via the messages API:
+1. **Set status to `thinking`** before processing, so the UI dot blinks:
+   ```bash
+   curl -s -X POST http://localhost:8080/api/agent/{plan-id}/status \
+     -H "Content-Type: application/json" \
+     -d '{"status": "thinking"}'
+   ```
+2. If `item_ref` is set (e.g. `"2:1"` = module index 2, item index 1), resolve the referenced item from the plan's `modules` array for context.
+3. Formulate a response addressing the feedback.
+4. If the feedback implies a plan change, update the `.toon` file directly (the server's file watcher reloads it and broadcasts via WebSocket).
+5. Post your response via the messages API:
    ```bash
    curl -s -X POST http://localhost:8080/api/plan/{plan-id}/messages \
      -H "Content-Type: application/json" \
      -d '{"role": "agent", "text": "Good point. I\'ve updated the risk section." }'
    ```
-5. After posting, immediately update your local `last_seen_msg_id` tracking so you don't reprocess the same message.
+6. After posting, immediately update your local `last_seen_msg_id` tracking so you don't reprocess the same message.
+7. **Set status back to `listening`** so the dot returns to solid blue:
+   ```bash
+   curl -s -X POST http://localhost:8080/api/agent/{plan-id}/status \
+     -H "Content-Type: application/json" \
+     -d '{"status": "listening"}'
+   ```
 
 ### 5. Handle Approval
 
 When `plan.state == "approved"`:
 
-1. Acknowledge to the user via a final agent message.
-2. Exit the listen loop.
-3. Proceed with implementation using the **plan-implementation-procedure** skill.
+1. **Set status to `offline`** to indicate the agent is done:
+   ```bash
+   curl -s -X POST http://localhost:8080/api/agent/{plan-id}/status \
+     -H "Content-Type: application/json" \
+     -d '{"status": "offline"}'
+   ```
+2. Acknowledge to the user via a final agent message.
+3. Exit the listen loop.
+4. Proceed with implementation using the **plan-implementation-procedure** skill.
 
 ### 6. Handle Cancellation (User Interrupt)
 
@@ -477,19 +504,28 @@ If the user presses Ctrl-C during the file-watch (the bash call fails/interrupts
 ```
 1. Start server, create plan, open browser
 2. Initialize last_seen_msg_ids = {}  (from current plan messages)
-3. Loop:
+3. Send initial heartbeat:
+   curl -X POST http://localhost:8080/api/agent/{id}/heartbeat
+4. Loop:
    a. Run fswatch on plan file (blocks, no token burn)
-   b. Fetch plan: curl http://localhost:8080/api/plan/{id}
-   c. Parse JSON
-   d. For each msg in plan.messages where role=="human" and id not in last_seen_msg_ids:
+   b. Send heartbeat (refresh every 60s, keep dot blue)
+   c. Fetch plan: curl http://localhost:8080/api/plan/{id}
+   d. Parse JSON
+   e. For each msg in plan.messages where role=="human" and id not in last_seen_msg_ids:
+      - Set thinking:
+        curl -X POST http://localhost:8080/api/agent/{id}/status -d '{"status":"thinking"}'
       - Analyze: resolve item_ref if set, read context from plan.modules
       - Respond: POST /api/plan/{id}/messages (role="agent", text="...")
       - Update last_seen_msg_ids
-   e. If plan.state == "approved":
+      - Set listening:
+        curl -X POST http://localhost:8080/api/agent/{id}/status -d '{"status":"listening"}'
+   f. If plan.state == "approved":
+      - Set offline:
+        curl -X POST http://localhost:8080/api/agent/{id}/status -d '{"status":"offline"}'
       - Post final acknowledgment
       - Break loop → proceed to implementation
-   f. If user interrupted → ask what to do
-   g. Goto 3a
+   g. If user interrupted → ask what to do
+   h. Goto 4a
 ```
 
 ### 8. Configuration

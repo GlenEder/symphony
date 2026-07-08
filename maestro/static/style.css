@@ -164,14 +164,37 @@ body {
 	gap: 0.4rem;
 }
 
-.logo::before {
-	content: '';
+.agent-status-dot {
 	display: inline-block;
 	width: 8px;
 	height: 8px;
 	border-radius: 50%;
 	background: var(--color-accent);
 	box-shadow: 0 0 8px var(--color-accent);
+	transition: background var(--transition-base), box-shadow var(--transition-base);
+}
+
+.agent-status-dot.thinking {
+	background: var(--color-accent);
+	box-shadow: 0 0 8px var(--color-accent);
+	animation: pulse-blue 1.2s ease-in-out infinite;
+}
+
+.agent-status-dot.offline {
+	background: var(--color-danger);
+	box-shadow: 0 0 8px var(--color-danger);
+	animation: none;
+}
+
+@keyframes pulse-blue {
+	0%, 100% {
+		opacity: 1;
+		box-shadow: 0 0 8px var(--color-accent);
+	}
+	50% {
+		opacity: 0.3;
+		box-shadow: 0 0 2px var(--color-accent);
+	}
 }
 
 .site-header nav {

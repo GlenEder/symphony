@@ -971,6 +971,35 @@
 			cancelDeleteModal();
 		}
 	});
+
+	/* ── Agent Status Polling ── */
+
+	function updateAgentDot(status) {
+		const dot = document.querySelector(".agent-status-dot");
+		if (!dot) return;
+		dot.classList.remove("listening", "thinking", "offline");
+		if (status === "thinking") {
+			dot.classList.add("thinking");
+			dot.title = "Agent is thinking…";
+		} else if (status === "offline" || !status) {
+			dot.classList.add("offline");
+			dot.title = "Agent offline";
+		} else {
+			dot.classList.add("listening");
+			dot.title = "Agent is listening";
+		}
+	}
+
+	function pollAgentStatus() {
+		fetch("/api/agent/" + planID + "/status")
+			.then(function(r) { return r.json(); })
+			.then(function(data) { updateAgentDot(data.status); })
+			.catch(function() { updateAgentDot("offline"); });
+	}
+
+	// Poll every 5 seconds
+	pollAgentStatus();
+	setInterval(pollAgentStatus, 5000);
 </script>
 
 <!-- Confirm delete modal -->

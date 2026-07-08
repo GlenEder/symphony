@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -42,6 +43,17 @@ func main() {
 		log.Fatalf("load plans: %v", err)
 	}
 
+	// Agent state tracking
+	agentState := NewAgentState()
+
+	// Background goroutine: clean stale agent states every 5s
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+			agentState.GC()
+		}
+	}()
+
 	// File watcher for live updates
 	watcher, err := StartWatcher(store, plansDir)
 	if err != nil {
@@ -57,7 +69,7 @@ func main() {
 	http.Handle("/script.js", fsys)
 
 	// Register all routes
-	registerRoutes(tmpl, store, hub)
+	registerRoutes(tmpl, store, hub, agentState)
 
 	addr := fmt.Sprintf(":%s", port)
 	log.Printf("Starting server on http://localhost%s", addr)

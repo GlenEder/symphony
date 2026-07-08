@@ -4,9 +4,85 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+const AgentTimeout = 10 * time.Minute
+
+const (
+	StatusListening = "listening"
+	StatusThinking  = "thinking"
+	StatusOffline   = "offline"
+)
+
+// AgentStatus tracks the state of an AI agent per plan.
+type AgentStatus struct {
+	Status        string    `json:"status"`
+	LastHeartbeat time.Time `json:"-"`
+}
+
+// AgentState manages agent statuses across plans.
+type AgentState struct {
+	mu     sync.RWMutex
+	states map[string]*AgentStatus
+}
+
+func NewAgentState() *AgentState {
+	return &AgentState{
+		states: make(map[string]*AgentStatus),
+	}
+}
+
+// Heartbeat updates the last heartbeat time for a plan's agent.
+func (as *AgentState) Heartbeat(planID string) {
+	as.mu.Lock()
+	defer as.mu.Unlock()
+	st, ok := as.states[planID]
+	if !ok {
+		st = &AgentStatus{Status: StatusListening}
+		as.states[planID] = st
+	}
+	st.LastHeartbeat = time.Now()
+	st.Status = StatusListening
+}
+
+// SetStatus sets the agent status for a plan.
+func (as *AgentState) SetStatus(planID, status string) {
+	as.mu.Lock()
+	defer as.mu.Unlock()
+	st, ok := as.states[planID]
+	if !ok {
+		st = &AgentStatus{Status: status}
+		as.states[planID] = st
+	}
+	st.Status = status
+	st.LastHeartbeat = time.Now()
+}
+
+// GetStatus returns the current agent status for a plan.
+func (as *AgentState) GetStatus(planID string) string {
+	as.mu.RLock()
+	defer as.mu.RUnlock()
+	st, ok := as.states[planID]
+	if !ok {
+		return StatusOffline
+	}
+	return st.Status
+}
+
+// GC transitions stale entries (no heartbeat within AgentTimeout) to offline.
+func (as *AgentState) GC() {
+	as.mu.Lock()
+	defer as.mu.Unlock()
+	cutoff := time.Now().Add(-AgentTimeout)
+	for _, st := range as.states {
+		if st.LastHeartbeat.Before(cutoff) {
+			st.Status = StatusOffline
+		}
+	}
+}
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true }, // allow all origins

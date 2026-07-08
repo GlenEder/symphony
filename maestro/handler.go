@@ -61,7 +61,7 @@ type PlanPageData struct {
 	PlanID string
 }
 
-func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub) {
+func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, agentState *AgentState) {
 	// Plan listing
 	http.HandleFunc("/plans", func(w http.ResponseWriter, r *http.Request) {
 		plans := store.List()
@@ -210,6 +210,53 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub) {
 
 	// WebSocket for plan updates (Go 1.22+ parameterized pattern)
 	http.HandleFunc("/ws/plan/{id}", hub.handleWS(store))
+
+	// API: agent heartbeat (agent calls this periodically while listening)
+	http.HandleFunc("POST /api/agent/{id}/heartbeat", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id == "" {
+			http.Error(w, "missing agent id", http.StatusBadRequest)
+			return
+		}
+		agentState.Heartbeat(id)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+
+	// API: agent status update (agent reports thinking/listening)
+	http.HandleFunc("POST /api/agent/{id}/status", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id == "" {
+			http.Error(w, "missing agent id", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			Status string `json:"status"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if body.Status != StatusListening && body.Status != StatusThinking && body.Status != StatusOffline {
+			http.Error(w, "status must be 'listening', 'thinking', or 'offline'", http.StatusBadRequest)
+			return
+		}
+		agentState.SetStatus(id, body.Status)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+
+	// API: get agent status (polled by browser)
+	http.HandleFunc("GET /api/agent/{id}/status", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id == "" {
+			http.Error(w, "missing agent id", http.StatusBadRequest)
+			return
+		}
+		status := agentState.GetStatus(id)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": status})
+	})
 
 	// Redirect root to /plans
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
