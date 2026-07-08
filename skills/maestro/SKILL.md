@@ -367,6 +367,151 @@ modules[6]:
 4. To update a plan, edit the `.toon` file — the server picks up changes live.
 5. To add feedback or comments, use the API's messages endpoint or the sidebar in the web UI.
 
+## Feedback Session Workflow
+
+After crafting a plan (via `plan-modules` or manually), start a feedback session so the user can review, comment, and approve before implementation begins.
+
+### 1. Start the Session
+
+1. Build the server (if not already running):
+   ```bash
+   cd maestro && go build -o maestro . && ./maestro &
+   ```
+   The server starts on port 8080 by default (`PORT` env to override).
+
+2. Wait for the server to be ready:
+   ```bash
+   while ! curl -s http://localhost:8080/api/plans > /dev/null 2>&1; do sleep 0.2; done
+   ```
+
+3. Write your plan as a `.toon` file into `maestro/plans/{plan-id}.toon`.
+
+4. Open the plan in the browser:
+   ```bash
+   open http://localhost:8080/plan/{plan-id}
+   ```
+
+5. Inform the user:
+   > The plan is ready for review at http://localhost:8080/plan/{plan-id}
+   > You can comment on individual items by clicking them, send general feedback in the discussion sidebar, and click "Approve Plan" when satisfied.
+   > I'll wait here for your feedback.
+
+### 2. The Listen Loop
+
+Now enter the feedback loop. The plan file on disk (`maestro/plans/{plan-id}.toon`) is updated by the Maestro server whenever a message is added or the state changes (because `persistPlan()` rewrites the file). You'll watch this file for changes using OS-level file watching — zero token burn during idle.
+
+**Primary mechanism — `fswatch` (macOS):**
+
+```bash
+# Blocks until the plan file changes (use a generous timeout, e.g. 7200s)
+fswatch -1 "maestro/plans/{plan-id}.toon"
+```
+
+**Fallback — `stat` polling (works everywhere):**
+
+```bash
+# Poll mtime with 2s sleep when fswatch isn't available
+last_mtime=$(stat -f %m "maestro/plans/{plan-id}.toon" 2>/dev/null || true)
+while true; do
+  cur_mtime=$(stat -f %m "maestro/plans/{plan-id}.toon" 2>/dev/null || true)
+  if [ "$cur_mtime" != "$last_mtime" ]; then
+    last_mtime=$cur_mtime
+    break
+  fi
+  sleep 2
+done
+```
+
+Wrap the file-watch command in a bash tool call with a sufficiently long timeout. When the call returns, it means the plan file changed — proceed to the processor step below.
+
+### 3. Process Changes
+
+After the file-watch wakes you, poll the API for the current state:
+
+```bash
+curl -s http://localhost:8080/api/plan/{plan-id}
+```
+
+Parse the JSON response. On each wake, compare against the previous state (tracked in variables you maintain throughout the loop). Detect:
+
+1. **New human messages** — any message where `role == "human"` and `id` is not in your set of previously seen IDs.
+2. **State change** — `state == "approved"` means the user approved the plan.
+
+**Tracking state across iterations:**
+- Maintain a bash variable or small temp file with the set of seen message IDs.
+- On each wake, compare, process deltas, then update the set.
+
+### 4. Respond to Feedback
+
+For each new human message you detect:
+
+1. If `item_ref` is set (e.g. `"2:1"` = module index 2, item index 1), resolve the referenced item from the plan's `modules` array for context.
+2. Formulate a response addressing the feedback.
+3. If the feedback implies a plan change, update the `.toon` file directly (the server's file watcher reloads it and broadcasts via WebSocket).
+4. Post your response via the messages API:
+   ```bash
+   curl -s -X POST http://localhost:8080/api/plan/{plan-id}/messages \
+     -H "Content-Type: application/json" \
+     -d '{"role": "agent", "text": "Good point. I\'ve updated the risk section." }'
+   ```
+5. After posting, immediately update your local `last_seen_msg_id` tracking so you don't reprocess the same message.
+
+### 5. Handle Approval
+
+When `plan.state == "approved"`:
+
+1. Acknowledge to the user via a final agent message.
+2. Exit the listen loop.
+3. Proceed with implementation using the **plan-implementation-procedure** skill.
+
+### 6. Handle Cancellation (User Interrupt)
+
+If the user presses Ctrl-C during the file-watch (the bash call fails/interrupts):
+
+1. Ask the user what they want to do — resume the session, discard it, or proceed anyway.
+2. If resuming: restart the listen loop.
+3. If discarding: clean up (stop the server if you started it) and move on.
+
+### 7. Full Loop Pseudocode
+
+```
+1. Start server, create plan, open browser
+2. Initialize last_seen_msg_ids = {}  (from current plan messages)
+3. Loop:
+   a. Run fswatch on plan file (blocks, no token burn)
+   b. Fetch plan: curl http://localhost:8080/api/plan/{id}
+   c. Parse JSON
+   d. For each msg in plan.messages where role=="human" and id not in last_seen_msg_ids:
+      - Analyze: resolve item_ref if set, read context from plan.modules
+      - Respond: POST /api/plan/{id}/messages (role="agent", text="...")
+      - Update last_seen_msg_ids
+   e. If plan.state == "approved":
+      - Post final acknowledgment
+      - Break loop → proceed to implementation
+   f. If user interrupted → ask what to do
+   g. Goto 3a
+```
+
+### 8. Configuration
+
+| Setting | Default | Description |
+|---|---|---|
+| `PLANS_DIR` | `maestro/plans` | Directory with `.toon` files |
+| `MAESTRO_PORT` | `8080` | Port for the Maestro server |
+| `POLL_FALLBACK_SLEEP` | `2` | Seconds between `stat` polls (fallback only) |
+
+### 9. Edge Cases
+
+| Scenario | Handling |
+|---|---|
+| No `fswatch` available | Use `stat` polling fallback with 2s sleep |
+| User edits `.toon` file directly | File-watch wakes you; detect module changes via API diff; acknowledge the edits |
+| User revokes approval | `state` goes back to `draft` — stay in the loop; acknowledge the reversal |
+| Multiple rapid messages | Process all new messages in batch on one wake; group related responses |
+| Message deleted | Messages array shrinks — just update your tracking set; no action needed |
+| Server crash | If the API is unreachable, try to restart the server and re-check |
+| User idle / timeout | After 30 minutes without any change, ask the user if they're still reviewing |
+
 ## Code Layout
 
 ```

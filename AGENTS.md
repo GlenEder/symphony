@@ -22,5 +22,5 @@ These instructions are for all scenarios across all agents.
   If you see one, even if it is not caused by what you are working on right now, still fix it.
 - For planning discussions, stay in Agent mode by default.
   Do not switch to Plan mode unless I explicitly ask for a mode switch.
-- Once you craft the initial plan, use the maestro skill to start a feedback session with the plan
+- Once you craft the initial plan, use the maestro skill to start a feedback session and enter the listen loop — the agent will block on file changes (zero token burn) and auto-respond to feedback until the plan is approved.
 
