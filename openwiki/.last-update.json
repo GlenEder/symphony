@@ -1,0 +1,13 @@
+{
+  "gitHead": "fc62e28833ae41e4b4a226b40e4e7a0e5e0aba6c",
+  "updatedAt": "2026-07-17T12:00:00Z",
+  "pages": [
+    "openwiki/quickstart.md",
+    "openwiki/architecture/README.md",
+    "openwiki/maestro/README.md",
+    "openwiki/skills/README.md",
+    "openwiki/toon/README.md",
+    "openwiki/operations/README.md",
+    "openwiki/testing/README.md"
+  ]
+}
