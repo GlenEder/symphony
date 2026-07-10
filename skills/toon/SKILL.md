@@ -82,6 +82,23 @@ Each row has values in the same order as the field list. Values containing the a
 
 **Tabular format requires:** identical field sets across objects, primitive values only (no nested arrays/objects), and at least one key per object.
 
+**Caution — leading `"` in tabular rows:** If a row value starts with a double-quote character (`"`), the parser treats it as the start of a CSV-style quoted field. If the content also contains inner `"` characters (e.g., `"Delete Selected" button`), the quoting isn't properly terminated and **the entire `items` array is silently dropped** — no error is reported, items just disappear.
+
+```
+# WRONG — row starts with `"`
+items[2]{text}:
+  "Delete Selected" button appears
+  Item two
+
+# RIGHT — wrap in quotes or rephrase
+items[2]{text}:
+  "'Delete Selected' button appears"
+  The "Delete Selected" button appears
+  Item two
+```
+
+This is a known limitation of the `toon_go` parser (non-strict mode). Always ensure tabular rows don't start with a bare `"`, or wrap the full value in proper quotes.
+
 ### Mixed and Non-Uniform Arrays (List Format)
 
 Arrays that don't meet tabular requirements use list format with hyphen markers:
