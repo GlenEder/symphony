@@ -12,16 +12,24 @@ The project is designed for [Maki](https://github.com/gleneder/maki) but ports e
 
 ```bash
 # From the repo root
-./setup.sh
+./setup
 
 # Preview without making changes
-./setup.sh --dry-run
+./setup --dry-run
 
-# With custom config
-./setup.sh --maestro-dir /path/to/maestro --config-file-path ~/.bashrc
+# Only build Maestro
+./setup maestro
+
+# Only symlink skills
+./setup skills --dry-run
+
+# With custom config (maestro subcommand)
+./setup maestro --maestro-dir /path/to/maestro --config-file-path ~/.bashrc
 ```
 
 This symlinks skills into `~/.config/maki/skills/`, builds the Maestro binary, and adds `maestro` to your PATH. See [Operations](operations/README.md) for details.
+
+Run `./setup -h` to list all available subcommands, or `./setup <command> -h` for subcommand-specific help.
 
 ## Start Using Maestro
 
@@ -38,7 +46,8 @@ See [Maestro](maestro/README.md) for the full API, data model, and workflow.
 
 | Path | Description |
 |------|-------------|
-| `setup.sh` | Installation script — symlinks skills, builds Maestro, configures PATH |
+| `setup` | Installation dispatcher — run subcommands like `./setup maestro` |
+| `setup_cmds/` | Modular setup subcommand scripts |
 | `AGENTS.md` | Global agent baseline instructions (alwaysApply) |
 | `maestro/` | Go planning server source, templates, static assets |
 | `maestro/lib/toon/` | Go library for TOON encode/decode |
@@ -65,7 +74,8 @@ See [Maestro](maestro/README.md) for the full API, data model, and workflow.
 | `/maestro/store.go` | PlanStore — load, persist, manage plan lifecycle |
 | `/maestro/ws.go` | AgentState, WebSocket Hub, live broadcasts |
 | `/maestro/watcher.go` | File watcher for live plan reloads |
-| `/setup.sh` | Installation and configuration script |
+| `/setup` | Installation dispatcher |
+| `/setup_cmds/` | Setup subcommand scripts |
 | `/skills/maestro/SKILL.md` | Agent instructions for using Maestro |
 | `/skills/toon/SKILL.md` | Agent instructions for using TOON |
 

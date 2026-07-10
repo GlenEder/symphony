@@ -1,0 +1,67 @@
+#!/bin/bash
+# Symphony setup — dispatcher for modular subcommands
+# Run once on each device after cloning. Safe to re-run.
+# Run with no arguments to do everything, or pick a subcommand.
+#
+# Usage: ./setup [--dry-run] [<command>] [options]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+HELP_MESSAGE="Usage: setup [--dry-run] [<command>] [options]
+
+  Install and configure Symphony components from this repository.
+
+  Commands:
+    agents      Copy AGENTS.md into the Maki config directory
+    skills      Symlink skill directories into the Maki config directory
+    commands    Symlink command files into the Maki config directory
+    providers   Symlink provider scripts into the Maki config directory
+    init        Symlink init.lua into the Maki config directory
+    maestro     Build Maestro and configure PATH in shell rc file
+
+  Run 'setup <command> -h' for command-specific help.
+  Run with no arguments or -h to show this help message.
+
+  Global options:
+    --dry-run   Preview changes without making them"
+
+DRY_RUN=false
+
+# Collect args after stripping global flags
+remaining_args=()
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --dry-run) DRY_RUN=true; shift ;;
+    -h|--help) echo "$HELP_MESSAGE"; exit 0 ;;
+    --) shift; remaining_args+=("$@"); break ;;
+    *) remaining_args+=("$1"); shift ;;
+  esac
+done
+
+CMD="${remaining_args[0]:-}"
+REST_ARGS=("${remaining_args[@]:1}")
+
+case "$CMD" in
+  "")
+    echo "$HELP_MESSAGE"
+    exit 1
+    ;;
+  agents|skills|commands|providers|init|maestro)
+    DRY_RUN_FLAG=
+    if $DRY_RUN; then
+      DRY_RUN_FLAG="--dry-run"
+    fi
+
+    exec "$SCRIPT_DIR/setup_cmds/$CMD.sh" ${DRY_RUN_FLAG:+"$DRY_RUN_FLAG"} ${REST_ARGS[@]+"${REST_ARGS[@]}"}
+    ;;
+  -h|--help)
+    echo "$HELP_MESSAGE"
+    ;;
+  *)
+    echo "Unknown command: $CMD"
+    echo "$HELP_MESSAGE"
+    exit 1
+    ;;
+esac

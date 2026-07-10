@@ -4,28 +4,36 @@ This page covers how to install, configure, and operate the Symphony tool suite 
 
 ## Setup
 
-The single `setup.sh` script handles everything:
+The `setup` script is a dispatcher for modular subcommands:
 
 ```bash
-# Full setup
-./setup.sh
+# Full setup (runs all subcommands)
+./setup
 
 # Preview mode
-./setup.sh --dry-run
+./setup --dry-run
 
-# Custom Maestro directory
-./setup.sh --maestro-dir /custom/path/maestro
+# Only build Maestro (with custom options)
+./setup maestro --maestro-dir /custom/path/maestro --config-file-path ~/.bashrc
 
-# Custom shell config file
-./setup.sh --config-file-path ~/.bashrc
+# Only symlink skills
+./setup skills
 ```
 
-### What setup.sh does
+Run `./setup -h` to list all subcommands.
 
-1. **Symlinks skills** — Each `skills/<name>/` directory is linked to `~/.config/maki/skills/<name>/`
-2. **Symlinks config files** — `AGENTS.md`, `init.lua` (if present), and any `commands/` and `providers/` files
-3. **Builds Maestro** — Runs `go build -o maestro .` in the `maestro/` directory
-4. **Configures PATH** — Adds the Maestro binary to PATH via shell rc file with a marker comment for idempotency
+### What the setup subcommands do
+
+| Subcommand | Description |
+|------------|-------------|
+| `agents` | Copies `AGENTS.md` to `~/.config/maki/AGENTS.md` |
+| `skills` | Symlinks each `skills/<name>/` directory to `~/.config/maki/skills/<name>/` |
+| `commands` | Symlinks each `commands/*` file to `~/.config/maki/commands/` |
+| `providers` | Symlinks each `providers/*` file to `~/.config/maki/providers/` |
+| `init` | Symlinks `init.lua` to `~/.config/maki/init.lua` |
+| `maestro` | Builds Maestro and configures PATH in shell rc file |
+
+Running `./setup` with no arguments runs all six subcommands in sequence.
 
 ### Idempotency
 
@@ -37,13 +45,13 @@ The script is safe to re-run:
 ## Prerequisites
 
 - **Go 1.26+** — for building Maestro (see `maestro/go.mod`)
-- **Bash** — for running `setup.sh` and helper scripts
+- **Bash** — for running `setup` and helper scripts
 - **[fswatch](https://emcrisostomo.github.io/fswatch/)** — recommended for zero-latency file change detection in Maestro listen scripts. Falls back to `stat` polling if unavailable.
 
 ## Running Maestro
 
 ```bash
-# From any directory if setup.sh was run
+# From any directory if setup was run
 maestro
 
 # Or from the repo directory
