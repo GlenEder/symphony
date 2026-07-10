@@ -32,15 +32,4 @@ These instructions are for all scenarios across all agents.
 - Apply the same high standard to engineering excellence: lint failures, test failures, and test flakiness.
   If you see one, even if it is not caused by what you are working on right now, still fix it.
 - For planning discussions, stay in Agent mode by default.
-  Do not switch to Plan mode unless I explicitly ask for a mode switch.
-## Plan Display
-
-When you produce any substantive plan (architecture, design, implementation, refactor, or investigation), you MUST:
-
-1. **Format it as a Maestro plan document** — use the `maestro` skill's `.toon` format with appropriate module types (e.g., `steps` for sequential work, `risks` for trade-offs, `notes` for design rationale, `criteria` for acceptance criteria, `questions` for open decisions).
-2. **Serve it via the Maestro web UI** — start the server, write the `.toon` file to `maestro/plans/`, open the browser URL, and enter the listen loop for feedback.
-
-This does NOT apply to: trivial 1-3 line responses, commit messages, or inline code comments. When in doubt, use Maestro.
-
-Direct text output of plan content is the wrong path — the listener should see it rendered in the browser with structured modules, discussion threading, and item-level commenting.
 

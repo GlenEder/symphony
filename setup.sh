@@ -68,8 +68,60 @@ echo "  Repo: $SYMPHONY_DIR"
 echo "  Target: $CONFIG_DIR"
 echo ""
 
+install_agents_md() {
+    local src="$SYMPHONY_DIR/AGENTS.md"
+    local dst="$CONFIG_DIR/AGENTS.md"
+    local inject="$SYMPHONY_DIR/maestro/AGENTS_INJECT.md"
+    local begin_marker="# <<< MAESTRO AGENTS INJECT"
+    local end_marker="# >>> MAESTRO AGENTS INJECT"
+
+    if [ ! -f "$src" ]; then
+        return
+    fi
+
+    if $DRY_RUN; then
+        echo "[DRY RUN] cp $src -> $dst"
+        if [ -f "$inject" ]; then
+            echo "[DRY RUN] Would inject $inject into $dst between:"
+            echo "[DRY RUN]   $begin_marker"
+            echo "[DRY RUN]   ... content from maestro/AGENTS_INJECT.md ..."
+            echo "[DRY RUN]   $end_marker"
+        fi
+        return
+    fi
+
+    mkdir -p "$(dirname "$dst")"
+
+    # Break existing symlink if it points to our source (cp refuses identical files)
+    if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+        rm "$dst"
+    fi
+
+    # Copy the base AGENTS.md (not a symlink, so target is writable)
+    cp "$src" "$dst"
+    echo "  installed AGENTS.md"
+
+    # Inject maestro rules if the inject file exists
+    if [ -f "$inject" ]; then
+        # Strip any existing sentinel block from target
+        if grep -qF "$begin_marker" "$dst" 2>/dev/null; then
+            # Use sed to delete from begin to end marker (inclusive)
+            sed -i '' "/^$begin_marker$/,/^$end_marker$/d" "$dst"
+        fi
+
+        # Append fresh injection block
+        {
+            echo ""
+            echo "$begin_marker"
+            cat "$inject"
+            echo "$end_marker"
+        } >> "$dst"
+        echo "  injected maestro/AGENTS_INJECT.md"
+    fi
+}
+
 # --- AGENTS.md ---
-link "$SYMPHONY_DIR/AGENTS.md" "$CONFIG_DIR/AGENTS.md"
+install_agents_md
 
 # --- Skills (individual subdirectories) ---
 if [ -d "$SYMPHONY_DIR/skills" ]; then
