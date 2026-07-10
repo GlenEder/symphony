@@ -140,7 +140,7 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 			// POST /api/plan/{id}/messages — add a message to the conversation thread
 			if msgID, ok := strings.CutSuffix(id, "/messages"); ok {
 				var body struct {
-					Role    string ` + json:"role"`
+					Role    string `json:"role"`
 					Text    string `json:"text"`
 					ItemRef string `json:"item_ref,omitempty"`
 				}

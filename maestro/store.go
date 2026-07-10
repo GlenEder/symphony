@@ -141,6 +141,9 @@ func (s *PlanStore) AddMessage(id, role, text, itemRef string) (*Message, error)
 	if err := s.persistPlan(id); err != nil {
 		return nil, err
 	}
+	if s.onChange != nil {
+		s.onChange(id)
+	}
 	return &msg, nil
 }
 
@@ -195,6 +198,9 @@ func (s *PlanStore) SetState(id, state string) error {
 
 	if err := s.persistPlan(id); err != nil {
 		return err
+	}
+	if s.onChange != nil {
+		s.onChange(id)
 	}
 	return nil
 }

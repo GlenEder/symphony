@@ -491,7 +491,7 @@
 		}
 	}
 
-	function escapeHtml(str) {
+	function updateTimestamp(updatedAt) {
 		if (!updatedAt) return;
 		const el = document.querySelector(".plan-updated-at");
 		if (el) {
@@ -512,7 +512,7 @@
 		el.classList.add("item-highlightable");
 	}
 
-	function escapeHtml(str) {
+		function escapeHtml(str) {
 		const div = document.createElement("div");
 		div.textContent = str;
 		return div.innerHTML;
@@ -964,10 +964,7 @@
 				sendMessage();
 			}
 		}
-	});
-
-	// Close delete modal on Escape
-	document.addEventListener("keydown", function(e) {
+		// Close delete modal on Escape
 		if (e.key === "Escape" && document.getElementById("delete-modal-overlay").classList.contains("visible")) {
 			cancelDeleteModal();
 		}
