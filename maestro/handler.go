@@ -113,8 +113,20 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 		}
 
 		if r.Method == http.MethodDelete {
-			// DELETE /api/plan/{id}/messages/{msgId} — delete a message from the thread
+			// DELETE /api/plan/{id} — delete an entire plan
+			// DELETE /api/plan/{id}/messages/{msgId} — delete a message
 			parts := strings.SplitN(id, "/", 3)
+			if len(parts) == 1 {
+				if err := store.DeletePlan(parts[0]); err != nil {
+					log.Printf("delete plan error: %v", err)
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"status":"ok"}`))
+				return
+			}
 			if len(parts) == 3 && parts[1] == "messages" {
 				if err := store.DeleteMessage(parts[0], parts[2]); err != nil {
 					log.Printf("delete message error: %v", err)

@@ -3,24 +3,181 @@
 {{define "page-content"}}
 <section class="hero">
 	<h1>Plans</h1>
-	<p>Select a plan to review.</p>
+	<p>Select a plan to review, or select multiple to delete.</p>
 </section>
 
-<section class="plan-list">
+<div class="plans-toolbar" id="plans-toolbar">
+	<label class="select-all-label">
+		<input type="checkbox" id="select-all" onchange="toggleSelectAll(this)">
+		Select All
+	</label>
+	<div class="toolbar-actions">
+		<button class="toolbar-delete-btn" id="delete-selected-btn" disabled onclick="showDeleteModal()">
+			Delete Selected <span class="delete-count" id="delete-count"></span>
+		</button>
+	</div>
+</div>
+
+<section class="plan-list" id="plan-list">
 	{{if .Plans}}
 		{{range .Plans}}
-		<a href="/plan/{{.ID}}" class="plan-card">
-			<span class="plan-card-icon">📋</span>
-			<div class="plan-card-content">
-				<h2>{{.Title}}</h2>
-				<p>{{.Summary}}</p>
-				{{if .UpdatedAt}}<span class="plan-card-date">Updated {{timeago .UpdatedAt}}</span>{{end}}
-			</div>
-			<span class="plan-card-arrow">→</span>
-		</a>
+		<div class="plan-card-wrapper" data-plan-id="{{.ID}}">
+			<label class="plan-card-checkbox" onclick="event.stopPropagation()">
+				<input type="checkbox" class="plan-checkbox" data-plan-id="{{.ID}}" onchange="onCheckboxChange()">
+			</label>
+			<a href="/plan/{{.ID}}" class="plan-card">
+				<span class="plan-card-icon">📋</span>
+				<div class="plan-card-content">
+					<h2>{{.Title}}</h2>
+					<p>{{.Summary}}</p>
+					{{if .UpdatedAt}}<span class="plan-card-date">Updated {{timeago .UpdatedAt}}</span>{{end}}
+				</div>
+				<span class="plan-card-arrow">→</span>
+			</a>
+		</div>
 		{{end}}
 	{{else}}
 		<p class="empty-state">No plans yet. Place a <code>.toon</code> file in the plans directory.</p>
 	{{end}}
 </section>
+
+<!-- Confirm delete modal -->
+<div class="modal-overlay" id="delete-modal-overlay" onclick="cancelDeleteModal()">
+	<div class="modal-dialog" onclick="event.stopPropagation()">
+		<div class="modal-header">
+			<span class="modal-title" id="delete-modal-title">Delete plans?</span>
+		</div>
+		<p class="modal-body" id="delete-modal-body">This action cannot be undone.</p>
+		<div class="modal-actions">
+			<button class="modal-btn modal-btn-cancel" onclick="cancelDeleteModal()">Cancel</button>
+			<button class="modal-btn modal-btn-danger" id="delete-modal-confirm" onclick="confirmDeletePlans()">Delete</button>
+		</div>
+	</div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+(function() {
+	var planList = document.getElementById("plan-list");
+	var deleteBtn = document.getElementById("delete-selected-btn");
+	var deleteCount = document.getElementById("delete-count");
+	var selectAll = document.getElementById("select-all");
+	var deleteOverlay = document.getElementById("delete-modal-overlay");
+
+	function getSelected() {
+		var selected = [];
+		var checkboxes = document.querySelectorAll(".plan-checkbox:checked");
+		checkboxes.forEach(function(cb) {
+			selected.push(cb.getAttribute("data-plan-id"));
+		});
+		return selected;
+	}
+
+	function onCheckboxChange() {
+		var selected = getSelected();
+		var allCheckboxes = document.querySelectorAll(".plan-checkbox");
+		var allChecked = allCheckboxes.length > 0 && selected.length === allCheckboxes.length;
+
+		selectAll.checked = allChecked;
+		selectAll.indeterminate = selected.length > 0 && !allChecked;
+
+		if (selected.length > 0) {
+			deleteBtn.disabled = false;
+			deleteCount.textContent = "(" + selected.length + ")";
+		} else {
+			deleteBtn.disabled = true;
+			deleteCount.textContent = "";
+		}
+
+		// Update card selected state
+		document.querySelectorAll(".plan-card-wrapper").forEach(function(wrapper) {
+			var cb = wrapper.querySelector(".plan-checkbox");
+			wrapper.classList.toggle("selected", cb && cb.checked);
+		});
+	}
+
+	window.onCheckboxChange = onCheckboxChange;
+
+	window.toggleSelectAll = function(el) {
+		var checked = el.checked;
+		document.querySelectorAll(".plan-checkbox").forEach(function(cb) {
+			cb.checked = checked;
+		});
+		onCheckboxChange();
+	};
+
+	window.showDeleteModal = function() {
+		var selected = getSelected();
+		if (selected.length === 0) return;
+		var title = document.getElementById("delete-modal-title");
+		var body = document.getElementById("delete-modal-body");
+		if (selected.length === 1) {
+			title.textContent = "Delete 1 plan?";
+			body.textContent = "This will permanently delete the plan file. This action cannot be undone.";
+		} else {
+			title.textContent = "Delete " + selected.length + " plans?";
+			body.textContent = "This will permanently delete " + selected.length + " plan files. This action cannot be undone.";
+		}
+		deleteOverlay.classList.add("visible");
+	};
+
+	window.cancelDeleteModal = function() {
+		deleteOverlay.classList.remove("visible");
+	};
+
+	window.confirmDeletePlans = function() {
+		var selected = getSelected();
+		if (selected.length === 0) return;
+		cancelDeleteModal();
+
+		deleteBtn.disabled = true;
+		deleteBtn.textContent = "Deleting…";
+
+		var completed = 0;
+		var total = selected.length;
+
+		selected.forEach(function(id) {
+			fetch("/api/plan/" + id, { method: "DELETE" })
+			.then(function(resp) {
+				if (!resp.ok) throw new Error("Server returned " + resp.status);
+				completed++;
+				removeCard(id);
+				if (completed === total) {
+					deleteBtn.textContent = "Delete Selected";
+					onCheckboxChange();
+					if (document.querySelectorAll(".plan-card-wrapper").length === 0) {
+						showEmptyState();
+					}
+				}
+			})
+			.catch(function(err) {
+				console.error("Failed to delete plan:", id, err);
+				completed++;
+				if (completed === total) {
+					deleteBtn.textContent = "Delete Selected";
+				}
+			});
+		});
+	};
+
+	function removeCard(id) {
+		var wrapper = document.querySelector('.plan-card-wrapper[data-plan-id="' + id + '"]');
+		if (wrapper) {
+			wrapper.remove();
+		}
+	}
+
+	function showEmptyState() {
+		planList.innerHTML = '<p class="empty-state">No plans yet. Place a <code>.toon</code> file in the plans directory.</p>';
+	}
+
+	// Close modal on Escape
+	document.addEventListener("keydown", function(e) {
+		if (e.key === "Escape" && deleteOverlay.classList.contains("visible")) {
+			cancelDeleteModal();
+		}
+	});
+})();
+</script>
 {{end}}

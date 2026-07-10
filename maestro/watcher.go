@@ -41,6 +41,13 @@ func StartWatcher(store *PlanStore, dir string) (*fsnotify.Watcher, error) {
 					if store.onChange != nil {
 						store.onChange(id)
 					}
+				} else if event.Has(fsnotify.Remove) {
+					log.Printf("plan file removed: %s", event.Name)
+					id := strings.TrimSuffix(filepath.Base(event.Name), ".toon")
+					store.RemovePlan(id)
+					if store.onChange != nil {
+						store.onChange(id)
+					}
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {

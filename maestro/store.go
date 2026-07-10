@@ -180,6 +180,36 @@ func (s *PlanStore) DeleteMessage(planID, msgID string) error {
 	return nil
 }
 
+// DeletePlan removes a plan from in-memory store and deletes its .toon file from disk.
+func (s *PlanStore) DeletePlan(id string) error {
+	s.mu.Lock()
+
+	if _, ok := s.plans[id]; !ok {
+		s.mu.Unlock()
+		return fmt.Errorf("plan not found: %s", id)
+	}
+	delete(s.plans, id)
+	s.mu.Unlock()
+
+	path := filepath.Join(s.dir, id+".toon")
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("delete plan file: %w", err)
+	}
+
+	if s.onChange != nil {
+		s.onChange(id)
+	}
+	return nil
+}
+
+// RemovePlan removes a plan from in-memory store without touching disk.
+// Used when the file was already deleted externally (e.g., via file watcher).
+func (s *PlanStore) RemovePlan(id string) {
+	s.mu.Lock()
+	delete(s.plans, id)
+	s.mu.Unlock()
+}
+
 // SetState sets the plan's state. Only "draft" and "approved" are valid.
 func (s *PlanStore) SetState(id, state string) error {
 	if state != "draft" && state != "approved" {

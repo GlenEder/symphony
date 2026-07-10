@@ -353,6 +353,123 @@ main {
 	color: var(--color-accent);
 }
 
+/* ── Plan Card Wrapper (for checkbox + card combo) ── */
+
+.plan-card-wrapper {
+	display: flex;
+	align-items: stretch;
+	gap: 0;
+}
+
+.plan-card-wrapper.selected .plan-card {
+	border-color: var(--color-accent);
+	background: var(--color-accent-bg);
+}
+
+.plan-card-checkbox {
+	display: flex;
+	align-items: center;
+	padding: 0 var(--space-md) 0 var(--space-lg);
+	cursor: pointer;
+	border: 1px solid var(--color-border);
+	border-right: none;
+	border-radius: var(--radius-md) 0 0 var(--radius-md);
+	background: var(--color-surface);
+	transition: all var(--transition-base);
+}
+
+.plan-card-wrapper.selected .plan-card-checkbox {
+	border-color: var(--color-accent);
+	background: var(--color-accent-bg);
+}
+
+.plan-card-checkbox input[type="checkbox"] {
+	width: 18px;
+	height: 18px;
+	cursor: pointer;
+	accent-color: var(--color-accent);
+}
+
+.plan-card-wrapper .plan-card {
+	border-radius: 0 var(--radius-md) var(--radius-md) 0;
+	border-left: none;
+	flex: 1;
+}
+
+.plan-card-wrapper .plan-card::before {
+	display: none;
+}
+
+/* ── Plans Toolbar ── */
+
+.plans-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: var(--space-lg);
+	padding: var(--space-sm) var(--space-md);
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	min-height: 44px;
+}
+
+.select-all-label {
+	display: flex;
+	align-items: center;
+	gap: var(--space-sm);
+	font-size: 0.85rem;
+	color: var(--color-text-secondary);
+	cursor: pointer;
+	user-select: none;
+}
+
+.select-all-label input[type="checkbox"] {
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+	accent-color: var(--color-accent);
+}
+
+.toolbar-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--space-sm);
+}
+
+.toolbar-delete-btn {
+	display: flex;
+	align-items: center;
+	gap: var(--space-xs);
+	padding: 0.45rem 0.9rem;
+	font-size: 0.85rem;
+	font-weight: 500;
+	border: 1px solid var(--color-danger);
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: var(--color-danger);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	line-height: 1.4;
+}
+
+.toolbar-delete-btn:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+	border-color: var(--color-border);
+	color: var(--color-text-tertiary);
+}
+
+.toolbar-delete-btn:not(:disabled):hover {
+	background: var(--color-danger);
+	color: #fff;
+	box-shadow: var(--color-shadow-sm);
+}
+
+.delete-count {
+	font-size: 0.8rem;
+}
+
 /* ── Empty State ── */
 
 .empty-state {
