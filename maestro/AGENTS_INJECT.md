@@ -1,4 +1,4 @@
-## Plan Display
+## Maestro -- Interative Planning Server
 
 When you produce any substantive plan (architecture, design, implementation, refactor, or investigation), you MUST:
 
