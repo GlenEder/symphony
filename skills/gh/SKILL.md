@@ -89,7 +89,7 @@ gh pr diff 42
 # Check CI status on a PR
 gh pr checks 42
 
-# Add PR to a project (v2)
+# Add PR to a project (v2) — see also gh project item-add below
 gh pr edit 42 --add-project "Project Name"
 ```
 
@@ -237,6 +237,117 @@ gh run delete 1234
 gh workflow view build.yml
 ```
 
+## Projects (v2)
+
+```bash
+# List projects for current user
+gh project list
+
+# List projects for an org
+gh project list --owner org-name
+
+# List projects including closed
+gh project list --closed
+
+# View a project
+gh project view 1
+gh project view 1 --owner monalisa --web
+gh project view 1 --format json
+
+# Create a project
+gh project create --owner @me --title "Roadmap"
+
+# Edit a project
+gh project edit 1 --title "New Title" --description "Updated description"
+
+# Copy a project
+gh project copy 1 --title "Q4 Copy"
+
+# Close / delete a project
+gh project close 1
+gh project delete 1
+
+# Mark as template / unlink
+gh project mark-template 1
+gh project unlink 1 --repo owner/repo
+
+# Link project to repo or team
+gh project link 1 --repo owner/repo
+gh project link 1 --team my-team
+
+# List fields in a project
+gh project field-list 1 --owner @me
+gh project field-list 1 --owner @me --format json
+
+# Create / delete a custom field
+gh project field-create 1 --name "Sprint" --type text
+gh project field-delete 1 --field-id <field-id>
+
+# List items in a project
+gh project item-list 1 --owner @me
+gh project item-list 1 --owner @me --query "assignee:monalisa -status:Done"
+gh project item-list 1 --limit 100
+
+# Add an issue or PR to a project
+gh project item-add 1 --url https://github.com/owner/repo/issues/42
+
+# Create a draft issue in a project
+gh project item-create 1 --title "Draft task" --body "Notes..."
+
+# Edit an item in a project
+gh project item-edit 1 --item-id <item-id> --field "Status" --value "In Progress"
+
+# Archive / delete an item
+gh project item-archive 1 --item-id <item-id>
+gh project item-delete 1 --item-id <item-id>
+```
+
+**Scope requirement**: Token needs the `project` scope. Add it with:
+
+```bash
+gh auth refresh -s project
+```
+
+## Cache (Actions)
+
+```bash
+# List caches for current repo
+gh cache list
+
+# List for a specific repo
+gh cache list --repo cli/cli
+
+# List sorted by size (newest first)
+gh cache list --sort size_in_bytes --order desc
+
+# Filter by key prefix
+gh cache list --key setup-
+
+# Filter by branch ref
+gh cache list --ref refs/heads/main
+gh cache list --ref refs/pull/42/merge
+
+# Output as JSON with selected fields
+gh cache list --json id,key,sizeInBytes,ref,createdAt
+
+# Delete a cache by ID
+gh cache delete 1234
+
+# Delete a cache by key
+gh cache delete setup-node-abc123
+
+# Delete cache by key on a specific branch
+gh cache delete cache-key --ref refs/heads/feature-branch
+
+# Delete all caches
+gh cache delete --all
+
+# Delete all caches for a specific ref (exit 0 on no caches)
+gh cache delete --all --ref refs/pull/42/merge --succeed-on-no-caches
+```
+
+**Scope requirement**: Cache deletion requires the `repo` scope.
+
 ## Gists
 
 ```bash
@@ -341,6 +452,50 @@ gh search prs "feat" --author @me --state merged
 gh search repos "topic:react stars:>1000"
 ```
 
+## Rulesets
+
+```bash
+# List rulesets for current repository
+gh ruleset list
+
+# List rulesets for another repo (including inherited)
+gh ruleset list --repo owner/repo --parents
+
+# List organization-wide rulesets
+gh ruleset list --org my-org
+
+# Open ruleset list in browser
+gh ruleset list --web
+
+# Interactively select ruleset to view
+gh ruleset view
+
+# View a specific ruleset by ID
+gh ruleset view 43
+
+# View ruleset from another repo
+gh ruleset view 23 --repo owner/repo
+
+# View org-level ruleset
+gh ruleset view 23 --org my-org
+
+# Open ruleset in browser
+gh ruleset view --web
+
+# Check rules that apply to current branch
+gh ruleset check
+
+# Check rules for a specific branch
+gh ruleset check my-branch
+
+# Check rules for the default branch
+gh ruleset check --default
+```
+
+**Alias**: `gh rs` can be used instead of `gh ruleset`.
+
+**Scope requirement**: Listing org rulesets needs the `admin:org` scope (`gh auth refresh -s admin:org`).
+
 ## Configuration
 
 ```bash
@@ -359,6 +514,80 @@ gh config set pager less
 # Set host
 gh config set host example.com
 ```
+
+## Copilot
+
+> **Status**: GitHub Copilot CLI is currently in preview and subject to change.
+
+```bash
+# Run Copilot interactively
+gh copilot
+
+# Run with a prompt (non-interactive)
+gh copilot -p "Summarize this week's commits"
+
+# Allow all tools automatically (for scripting)
+gh copilot -p "Fix the bug in main.js" --allow-all-tools
+
+# Enable all permissions (tools, paths, URLs)
+gh copilot -p "Fix the bug in main.js" --allow-all
+gh copilot -p "Fix the bug in main.js" --yolo
+
+# Use a specific model
+gh copilot --model gpt-5.2
+
+# Resume the most recent session
+gh copilot --continue
+
+# Resume a specific session
+gh copilot --resume=<session-id>
+
+# Grant specific tool permissions
+gh copilot -p "Update package.json" --allow-tool='write'
+
+# Grant shell with restrictions
+gh copilot --allow-tool='shell(git:*)' --deny-tool='shell(git push)'
+
+# Allow access to directories outside cwd
+gh copilot --add-dir /home/user/projects
+
+# Configure additional MCP servers
+gh copilot --additional-mcp-config '{"my-server":{"command":"node","args":["server.js"]}}'
+
+# Share session to markdown file on completion
+gh copilot -p "Refactor auth" --share
+
+# Share session to secret gist
+gh copilot -p "Refactor auth" --share-gist
+
+# Initialize Copilot instructions for a repo
+gh copilot init
+
+# Remove the Copilot CLI (if installed via gh)
+gh copilot --remove
+
+# Pass through flags to Copilot (use -- before them)
+gh copilot -- --help
+```
+
+**Key flags reference**:
+
+| Flag | Purpose |
+|------|---------|
+| `-p`, `--prompt` | Execute a prompt in non-interactive mode |
+| `--model` | Set the AI model (`gpt-5.2`, `claude-4`, etc.) |
+| `--allow-all`, `--yolo` | Allow all tools, paths, and URLs |
+| `--allow-all-tools` | Auto-approve all tool calls (for CI/automation) |
+| `--allow-tool` | Allow specific tool(s) without prompting |
+| `--deny-tool` | Deny specific tool(s) |
+| `--add-dir` | Add directory to allowed file access paths |
+| `--resume` | Resume a previous session |
+| `--continue` | Resume the most recent session |
+| `--share` / `--share-gist` | Export session to file/gist on completion |
+| `--additional-mcp-config` | Configure extra MCP servers for the session |
+| `--reasoning-effort` | Set reasoning level (`low`, `medium`, `high`, `xhigh`) |
+| `--silent` | Output only the agent response (for scripting) |
+| `--remove` | Remove the Copilot CLI downloaded by gh |
 
 ## Useful Flags & Patterns
 
@@ -406,6 +635,11 @@ gh repo set-default owner/repo  # set default repo for current dir
 8. **Check `gh auth status` first** if commands fail unexpectedly
 9. **Use `gh browse`** to quickly open the browser at the right page (supports file paths and branches)
 10. **Avoid `gh repo delete` in scripts** — it's irreversible with no undo
+11. **Add the `project` scope** via `gh auth refresh -s project` before using `gh project` commands
+12. **Use `gh cache list` before `gh cache delete`** to confirm cache IDs — deletion is irreversible
+13. **Use `gh copilot --allow-all-tools -p` for agent automation** — the `-p` flag enables non-interactive scripting
+14. **Use `gh ruleset check <branch>` before pushing** to see what rules apply to a branch
+15. **Prefer `gh rs` as a shorthand** for `gh ruleset` in interactive use
 
 ## Common Gotchas
 
@@ -415,3 +649,7 @@ gh repo set-default owner/repo  # set default repo for current dir
 - **GitHub App tokens**: use `--with-token` for non-user authentication
 - **Rate limiting**: unauthenticated requests get 60/hr; authenticated gets 5000/hr
 - **`gh pr merge` defaults to merge commit** — use `--squash` or `--rebase` explicitly for other strategies
+- **`gh project` requires the `project` scope** — `gh auth refresh -s project` before use
+- **`gh cache delete` is irreversible** — confirm cache IDs with `gh cache list` first
+- **`gh copilot` is in preview** — flags may change between gh CLI versions
+- **`gh ruleset` defaults to `--parents true`** — use `--no-parents` to see only repo-level rulesets
