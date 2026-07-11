@@ -6,15 +6,23 @@
 	<p>Select a plan to review, or select multiple to delete.</p>
 </section>
 
+<div class="plans-page">
+
 <div class="plans-toolbar" id="plans-toolbar">
-	<label class="select-all-label">
-		<input type="checkbox" id="select-all" onchange="toggleSelectAll(this)">
-		Select All
-	</label>
-	<div class="toolbar-actions">
-		<button class="toolbar-delete-btn" id="delete-selected-btn" disabled onclick="showDeleteModal()">
-			Delete Selected <span class="delete-count" id="delete-count"></span>
-		</button>
+	<div class="toolbar-default">
+		<button class="edit-btn" id="edit-btn" onclick="enterEditMode()">Edit</button>
+	</div>
+	<div class="toolbar-edit">
+		<label class="select-all-label">
+			<input type="checkbox" id="select-all" onchange="toggleSelectAll(this)">
+			Select All
+		</label>
+		<div class="toolbar-actions">
+			<button class="toolbar-delete-btn" id="delete-selected-btn" disabled onclick="showDeleteModal()">
+				Delete Selected <span class="delete-count" id="delete-count"></span>
+			</button>
+			<button class="done-btn" id="done-btn" onclick="exitEditMode()">Done</button>
+		</div>
 	</div>
 </div>
 
@@ -54,6 +62,8 @@
 		</div>
 	</div>
 </div>
+
+</div><!-- .plans-page -->
 {{end}}
 
 {{define "scripts"}}
@@ -105,6 +115,25 @@
 			cb.checked = checked;
 		});
 		onCheckboxChange();
+	};
+
+	window.enterEditMode = function() {
+		document.body.classList.add("edit-mode");
+	};
+
+	window.exitEditMode = function() {
+		document.body.classList.remove("edit-mode");
+		// Clear all selections
+		document.querySelectorAll(".plan-checkbox").forEach(function(cb) {
+			cb.checked = false;
+		});
+		selectAll.checked = false;
+		selectAll.indeterminate = false;
+		deleteBtn.disabled = true;
+		deleteCount.textContent = "";
+		document.querySelectorAll(".plan-card-wrapper").forEach(function(wrapper) {
+			wrapper.classList.remove("selected");
+		});
 	};
 
 	window.showDeleteModal = function() {

@@ -369,13 +369,20 @@ main {
 .plan-card-checkbox {
 	display: flex;
 	align-items: center;
-	padding: 0 var(--space-md) 0 var(--space-lg);
+	width: 0;
+	overflow: hidden;
+	padding: 0;
 	cursor: pointer;
 	border: 1px solid var(--color-border);
 	border-right: none;
 	border-radius: var(--radius-md) 0 0 var(--radius-md);
 	background: var(--color-surface);
-	transition: all var(--transition-base);
+	transition: width var(--transition-base), padding var(--transition-base);
+}
+
+body.edit-mode .plan-card-checkbox {
+	width: 56px;
+	padding: 0 var(--space-md) 0 var(--space-lg);
 }
 
 .plan-card-wrapper.selected .plan-card-checkbox {
@@ -414,6 +421,50 @@ main {
 	min-height: 44px;
 }
 
+.toolbar-default {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	width: 100%;
+}
+
+body.edit-mode .toolbar-default {
+	display: none;
+}
+
+.toolbar-edit {
+	display: none;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+}
+
+body.edit-mode .toolbar-edit {
+	display: flex;
+}
+
+.edit-btn {
+	display: flex;
+	align-items: center;
+	gap: var(--space-xs);
+	padding: 0.45rem 0.9rem;
+	font-size: 0.85rem;
+	font-weight: 500;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: var(--color-text-secondary);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	line-height: 1.4;
+}
+
+.edit-btn:hover {
+	background: var(--color-surface-hover);
+	color: var(--color-text);
+	border-color: var(--color-accent);
+}
+
 .select-all-label {
 	display: flex;
 	align-items: center;
@@ -435,6 +486,25 @@ main {
 	display: flex;
 	align-items: center;
 	gap: var(--space-sm);
+}
+
+.done-btn {
+	padding: 0.45rem 0.9rem;
+	font-size: 0.85rem;
+	font-weight: 500;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: var(--color-text-secondary);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	line-height: 1.4;
+}
+
+.done-btn:hover {
+	background: var(--color-surface-hover);
+	color: var(--color-text);
+	border-color: var(--color-accent);
 }
 
 .toolbar-delete-btn {

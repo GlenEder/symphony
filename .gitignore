@@ -1,3 +1,4 @@
 # Ignore all plan files except the reference one showing all module types
 maestro/plans/*
 !maestro/plans/test-all-modules.toon
+*.pid
