@@ -53,6 +53,7 @@ def api_call(method, path, query=None, body=None):
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
+        "User-Agent": "kaneo-api-cli/1.0",
     }
 
     data = json.dumps(body).encode("utf-8") if body is not None else None
@@ -120,7 +121,7 @@ def cmd_tasks_list(args):
     query = {"status": args.status, "priority": args.priority, "assigneeId": args.assignee_id,
              "page": args.page, "limit": args.limit, "sortBy": args.sort_by, "sortOrder": args.sort_order,
              "dueBefore": args.due_before, "dueAfter": args.due_after}
-    result = api_call("GET", f"/task/{args.project_id}", query=query)
+    result = api_call("GET", f"/task/tasks/{args.project_id}", query=query)
     print(json.dumps(result, indent=2))
 
 def cmd_tasks_create(args):

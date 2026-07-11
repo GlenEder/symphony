@@ -32,7 +32,34 @@ Used by: all project and task endpoints that use `:id` or `:projectId` params.
 
 ## Finding a Workspace ID
 
-- The user likely knows their workspace ID.
-- If not, there may be a `GET /api/workspace` endpoint (not yet confirmed).
-- The workspace ID is visible in the URL when using the Kaneo web UI:
+Three methods:
+
+### 1. API Discovery (Recommended)
+
+Use the Better Auth organizations endpoint to list all workspaces the API key has access to:
+
+```bash
+curl -s "$KANEO_API_URL/auth/organization/list" \
+  -H "Authorization: Bearer $KANEO_API_KEY"
+```
+
+Response:
+```json
+[
+  {
+    "id": "wksp_abc123",
+    "name": "My Workspace",
+    "slug": "my-workspace",
+    "createdAt": "2026-06-18T22:53:43.889Z"
+  }
+]
+```
+
+### 2. Web UI URL
+
+The workspace ID is visible in the URL when using the Kaneo web UI:
   `https://kaneo.example.com/workspace/{workspaceId}/...`
+
+### 3. Ask the User
+
+Fallback if other methods fail.
