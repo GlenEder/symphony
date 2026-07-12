@@ -47,6 +47,7 @@ Run both from the project root or `maestro/` dir. See `--help` on each for all o
 | `PORT`        | `8080`                 | HTTP server port                                 |
 | `MAESTRO_PLANS_DIR` | `plans`               | Directory with `.toon` files                     |
 | `MAESTRO_DIR` | Binary directory or CWD | Directory containing templates/ and static/ assets |
+| `MAESTRO_POLL_INTERVAL` | `500ms`          | File polling interval (e.g. `100ms`, `2s`)       |
 
 ## Plan Data Model
 
@@ -133,8 +134,10 @@ Messages are stored alongside the plan in-memory and persisted to the `.toon` fi
 
 - Plans are stored as `.toon` files in the `MAESTRO_PLANS_DIR` directory.
 - The file name (without `.toon` extension) becomes the plan ID used in URLs and API calls.
-- The server watches the directory for file changes and reloads automatically.
+- The server polls the directory for `.toon` file changes on a configurable interval (default 500ms) and reloads automatically.
 - When a plan file changes, the server broadcasts the updated plan via WebSocket to all connected clients viewing that plan.
+- Server-initiated writes (messages, state changes) are tracked so the poller skips redundant self-triggered reloads.
+- Use `POST /api/admin/reload` to trigger an immediate full rescan.
 
 ### Example: `plans/demo.toon`
 
@@ -272,6 +275,19 @@ Content-Type: application/json
 Valid states: `"draft"`, `"approved"`.
 Returns the full updated flat JSON plan.
 
+### Reload Plans (Admin)
+
+Trigger an immediate full directory rescan. Useful when plans are modified externally and you don't want to wait for the next poll cycle.
+
+```
+POST /api/admin/reload
+```
+
+Response:
+```json
+{"status": "ok"}
+```
+
 ### WebSocket (Live Updates)
 
 ```
@@ -287,6 +303,7 @@ When the plan file is modified, the server sends the full flat JSON plan over th
 | `/`                | Redirects to `/plans`                          |
 | `/plans`           | Plan listing page                              |
 | `/plan/{id}`       | Plan detail page with modules, sidebar, messages |
+| `POST /api/admin/reload` | Trigger full directory rescan (JSON)      |
 
 ### Example: `plans/regression-suite.toon`
 
@@ -383,10 +400,11 @@ modules[6]:
 ## Workflow: Creating and Editing Plans
 
 1. Create a `.toon` file in the `plans/` directory using the tabular tuple format shown above.
-2. The server loads it automatically on startup (or on next request if placed while running).
-3. The file watcher detects edits and triggers a WebSocket broadcast to connected clients.
-4. To update a plan, edit the `.toon` file — the server picks up changes live.
+2. The server loads it automatically on startup (or within the next poll cycle if placed while running).
+3. The poller detects edits and triggers a WebSocket broadcast to connected clients.
+4. To update a plan, edit the `.toon` file — the server picks up changes within one poll interval (default 500ms).
 5. To add feedback or comments, use the API's messages endpoint or the sidebar in the web UI.
+6. To force an immediate reload after bulk edits, call `POST /api/admin/reload`.
 
 ## Feedback Session Workflow
 
@@ -546,17 +564,20 @@ If the user presses Ctrl-C during the file-watch (the bash call fails/interrupts
 
 For listen loop script flags, run `scripts/maestro-listen.sh --help`.
 
-### 9. Edge Cases
+## Edge Cases
 
 | Scenario | Handling |
-|---|---|---|
-| No `fswatch` available | `maestro-listen.sh` auto-falls back to `stat` polling (--poll-fallback-sleep flag) |
-| User edits `.toon` file directly | `maestro-listen.sh` wakes on file change; detect module changes via API diff; acknowledge the edits |
-| User revokes approval | `state` goes back to `draft` — stay in the loop; acknowledge the reversal |
-| Multiple rapid messages | Process all new messages in batch on one wake; group related responses |
-| Message deleted | Messages array shrinks — just update your tracking set; no action needed |
-| Server crash | If the API is unreachable, try to restart the server and re-check |
-| User idle / timeout | After 30 minutes without any change, ask the user if they're still reviewing |
+|---|---|
+| **External .toon edits** | The poller detects mtime changes within one interval cycle (default 500ms); no `fswatch` needed |
+| **No `fswatch` available** | `maestro-listen.sh` uses `stat` polling (--poll-fallback-sleep flag) — the server-side poller always works regardless |
+| **Server-initiated writes** | The poller skips them via `IsSelfWrite()` mtime matching, avoiding redundant reloads |
+| **Direct .toon mtime edits** | `POST /api/admin/reload` forces an immediate rescan |
+| **User edits `.toon` file directly** | `maestro-listen.sh` wakes on file change; detect module changes via API diff; acknowledge the edits |
+| **User revokes approval** | `state` goes back to `draft` — stay in the loop; acknowledge the reversal |
+| **Multiple rapid messages** | Process all new messages in batch on one wake; group related responses |
+| **Message deleted** | Messages array shrinks — just update your tracking set; no action needed |
+| **Server crash** | If the API is unreachable, try to restart the server and re-check |
+| **User idle / timeout** | After 30 minutes without any change, ask the user if they're still reviewing |
 
 ## Code Layout
 
@@ -566,7 +587,8 @@ maestro/
 ├── handler.go           # HTTP route handlers (UI + JSON API)
 ├── model.go             # Data model types (Plan, Module, Item)
 ├── store.go             # PlanStore — loads, caches, saves plans to disk
-├── watcher.go           # File system watcher (fsnotify) for live reload
+├── watcher.go           # File poller (stat-based, no fsnotify) for live reload
+├── watcher_test.go      # Tests for polling, self-write tracking, file detection
 ├── ws.go                # WebSocket hub for plan update broadcasts
 ├── go.mod / go.sum      # Go module dependencies
 ├── templates/           # Go html/template files
@@ -584,7 +606,6 @@ maestro/
 ## Dependencies
 
 - Go 1.26+
-- `github.com/fsnotify/fsnotify` — file system notifications
 - `github.com/gorilla/websocket` — WebSocket support
 - `github.com/sstraus/toon_go/toon` — TOON format parser
 
