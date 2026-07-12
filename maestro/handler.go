@@ -74,6 +74,18 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 		renderPage(w, baseTmpl, filepath.Join(baseDir, "templates/plans.html"), data)
 	})
 
+	// Admin: trigger a full directory rescan and broadcast all plan changes
+	http.HandleFunc("POST /api/admin/reload", func(w http.ResponseWriter, r *http.Request) {
+		store.LoadAll()
+		for _, summary := range store.List() {
+			if store.onChange != nil {
+				store.onChange(summary.ID)
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+
 	// Plan detail page
 	http.HandleFunc("/plan/", func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/plan/")

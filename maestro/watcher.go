@@ -1,62 +1,94 @@
 package main
 
 import (
-	"log"
+	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/fsnotify/fsnotify"
+	"time"
 )
 
-// StartWatcher watches the plans directory for .toon file changes and reloads them.
-func StartWatcher(store *PlanStore, dir string) (*fsnotify.Watcher, error) {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return nil, err
-	}
+// FilePoller watches a directory for .toon file changes by polling modtimes.
+// Works reliably across all filesystem types including Docker volumes, NFS, and FUSE.
+type FilePoller struct {
+	stop chan struct{}
+}
 
-	// Watch the directory itself (not individual files) — fsnotify
-	// on dirs reports create/write events for files inside.
-	if err := watcher.Add(dir); err != nil {
-		watcher.Close()
-		return nil, err
-	}
+// StartWatcher starts polling for .toon file changes in dir at the given interval.
+// Returns a FilePoller that can be stopped via Close().
+func StartWatcher(store *PlanStore, dir string, interval time.Duration) *FilePoller {
+	pw := &FilePoller{stop: make(chan struct{})}
 
 	go func() {
+		knownMTimes := make(map[string]time.Time)
+
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
 		for {
 			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-				// Only care about .toon files
-				if !strings.HasSuffix(event.Name, ".toon") {
+			case <-ticker.C:
+				entries, err := os.ReadDir(dir)
+				if err != nil {
 					continue
 				}
-				// On write or create, reload the file
-				if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) {
-					log.Printf("plan file changed: %s", event.Name)
-					store.loadFile(event.Name)
-					id := strings.TrimSuffix(filepath.Base(event.Name), ".toon")
-					if store.onChange != nil {
-						store.onChange(id)
+
+				// Build set of current files for deletion detection
+				current := make(map[string]bool, len(entries))
+
+				for _, e := range entries {
+					if e.IsDir() || !strings.HasSuffix(e.Name(), ".toon") {
+						continue
 					}
-				} else if event.Has(fsnotify.Remove) {
-					log.Printf("plan file removed: %s", event.Name)
-					id := strings.TrimSuffix(filepath.Base(event.Name), ".toon")
-					store.RemovePlan(id)
+					current[e.Name()] = true
+
+					path := filepath.Join(dir, e.Name())
+					fi, err := os.Stat(path)
+					if err != nil {
+						continue
+					}
+					mtime := fi.ModTime()
+
+					last, seen := knownMTimes[e.Name()]
+					if seen && mtime.Equal(last) {
+						continue // no change
+					}
+					knownMTimes[e.Name()] = mtime
+
+					// Skip if the server itself just wrote this file
+					if store.IsSelfWrite(e.Name(), mtime) {
+						continue
+					}
+
+					id := strings.TrimSuffix(e.Name(), ".toon")
+					store.loadFile(path)
 					if store.onChange != nil {
 						store.onChange(id)
 					}
 				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
+
+				// Detect deleted files
+				for name := range knownMTimes {
+					if !current[name] {
+						id := strings.TrimSuffix(name, ".toon")
+						store.RemovePlan(id)
+						if store.onChange != nil {
+							store.onChange(id)
+						}
+						delete(knownMTimes, name)
+					}
 				}
-				log.Printf("watcher error: %v", err)
+
+			case <-pw.stop:
+				return
 			}
 		}
 	}()
 
-	return watcher, nil
+	return pw
+}
+
+// Close stops the polling goroutine.
+func (pw *FilePoller) Close() error {
+	close(pw.stop)
+	return nil
 }

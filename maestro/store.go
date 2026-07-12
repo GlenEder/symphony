@@ -16,17 +16,19 @@ import (
 
 // PlanStore holds loaded plans and notifies on changes.
 type PlanStore struct {
-	mu       sync.RWMutex
-	plans    map[string]*Plan
-	onChange func(id string)
-	dir      string
+	mu        sync.RWMutex
+	plans     map[string]*Plan
+	onChange  func(id string)
+	dir       string
+	lastWrite map[string]time.Time
 }
 
 func NewPlanStore(dir string, onChange func(id string)) *PlanStore {
 	return &PlanStore{
-		plans:    make(map[string]*Plan),
-		onChange: onChange,
-		dir:      dir,
+		plans:     make(map[string]*Plan),
+		onChange:  onChange,
+		dir:       dir,
+		lastWrite: make(map[string]time.Time),
 	}
 }
 
@@ -95,7 +97,8 @@ func (s *PlanStore) loadFile(path string) {
 	log.Printf("loaded plan: %s (%s)", id, plan.Title)
 }
 
-// persistPlan writes the in-memory plan to disk as a .toon file.
+// persistPlan writes the in-memory plan to disk as a .toon file
+// and records the file's mtime so the poller can skip the self-triggered reload.
 func (s *PlanStore) persistPlan(id string) error {
 	plan, ok := s.plans[id]
 	if !ok {
@@ -115,7 +118,16 @@ func (s *PlanStore) persistPlan(id string) error {
 		return fmt.Errorf("toon marshal: %w", err)
 	}
 	path := filepath.Join(s.dir, id+".toon")
-	return os.WriteFile(path, toonBytes, 0644)
+	if err := os.WriteFile(path, toonBytes, 0644); err != nil {
+		return err
+	}
+	// Record the mtime to prevent the poller from re-reading our own write
+	if fi, err := os.Stat(path); err == nil {
+		s.mu.Lock()
+		s.lastWrite[id] = fi.ModTime()
+		s.mu.Unlock()
+	}
+	return nil
 }
 
 // AddMessage appends a message to the plan's conversation thread and persists.
@@ -266,6 +278,16 @@ func (s *PlanStore) List() []PlanSummary {
 		return out[i].UpdatedAt > out[j].UpdatedAt
 	})
 	return out
+}
+
+// IsSelfWrite checks whether the server itself wrote this file at the given mtime.
+// This lets the poller skip redundant reloads after server-initiated writes.
+func (s *PlanStore) IsSelfWrite(filename string, mtime time.Time) bool {
+	id := strings.TrimSuffix(filename, ".toon")
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	last, ok := s.lastWrite[id]
+	return ok && mtime.Equal(last)
 }
 
 // PlanSummary is a lightweight view for listing.

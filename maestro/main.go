@@ -58,12 +58,15 @@ func main() {
 	}()
 
 	// File watcher for live updates
-	watcher, err := StartWatcher(store, plansDir)
-	if err != nil {
-		log.Printf("file watcher: %v (live updates disabled)", err)
-	} else {
-		defer watcher.Close()
+	pollInterval := 500 * time.Millisecond
+	if s := os.Getenv("MAESTRO_POLL_INTERVAL"); s != "" {
+		if d, err := time.ParseDuration(s); err == nil && d > 0 {
+			pollInterval = d
+		}
 	}
+	log.Printf("file poll interval: %v", pollInterval)
+	poller := StartWatcher(store, plansDir, pollInterval)
+	defer poller.Close()
 
 	// Static files
 	fsys := http.FileServer(http.Dir(filepath.Join(baseDir, "static")))
