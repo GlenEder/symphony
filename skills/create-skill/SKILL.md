@@ -27,6 +27,7 @@ Maki skills live in the skills repo and are symlinked into `~/.config/maki/skill
 ```
 skills/<skill-name>/
 ├── SKILL.md              # Required: frontmatter + core instructions (<500 lines)
+├── examples/             # Working code examples demonstrating skill usage
 ├── scripts/              # Executable helpers (tiny CLIs, deterministic tasks)
 ├── references/           # Supplementary context (schemas, cheatsheets, spec notes)
 └── assets/               # Templates or static files used in output
@@ -39,8 +40,26 @@ skills/<skill-name>/
 name: <kebab-case-name>       # 1-64 chars, lowercase, hyphens only, matches dir name
 description: <trigger-optimized>  # Max 1024 chars, third person, includes negative triggers
 compatibility: opencode
+allowed-tools: <tool1,tool2>  # Optional: restrict which tools the skill may use
+license: <SPDX-id>           # Optional: Apache-2.0, MIT, etc.
+metadata:                    # Optional: arbitrary key-value pairs
+  key: value
 ---
 ```
+
+### Optional Frontmatter Fields
+
+| Field | Description | Source |
+|-------|-------------|--------|
+| `allowed-tools` | Comma-separated list of tools the skill is permitted to use. Agents will NOT call tools outside this list. | Claude Code, AgentSkills |
+| `disable-model-invocation` | When true, prevents the agent from creating sub-agents for this skill. | Claude Code |
+| `user-invocable` | When true, allows the user to invoke the skill explicitly even when auto-trigger rules wouldn't match. | Claude Code |
+| `paths` | Glob patterns for files this skill activates on (e.g., `*.spec.ts`). Agent loads the skill when the user opens matching files. | Claude Code |
+| `context: fork` | Setting `context: fork` spawns a sub-agent to execute the skill, keeping the main conversation untouched. | Claude Code |
+| `license` | SPDX license identifier (e.g., `MIT`, `Apache-2.0`) for open-source skills. | AgentSkills spec |
+| `metadata` | Arbitrary key-value pairs for custom classification or routing. | AgentSkills spec |
+
+Use these fields sparingly. Most skills need only `name`, `description`, and `compatibility`.
 
 ### Trigger-Optimized Descriptions
 
@@ -110,7 +129,8 @@ skills/<skill-name>/
 ├── SKILL.md
 ├── scripts/
 ├── references/
-└── assets/
+├── assets/
+└── examples/
 ```
 
 ### Step 3: Write the Purpose Section
@@ -141,11 +161,14 @@ Keep SKILL.md under 500 lines. Use subdirectories for bulky content:
 
 - **Use step-by-step numbering.** Define workflows as strict chronological sequences.
 - **Decision trees should be explicit.** ("Step 2: If X, do Y. Otherwise, skip to Step 4.")
-- **Write in third-person imperative.** "Extract the text..." not "I will extract..." or "You should extract..."
+- **Write in imperative/infinitive form.** "Extract the text..." not "You should extract..." or "The agent extracts..." (this is the verb-first form recommended by Anthropic). Note: body uses verb-first imperative; frontmatter `description` uses third-person declarative ("Creates React components...").
 - **Use consistent terminology.** Pick one term per concept and stick with it.
 - **Be specific.** Use the most specific domain-native term (e.g., "template" not "html" or "markup" in Angular).
 - **Provide concrete templates** in `assets/` instead of describing output formats in prose.
 - **Handle errors explicitly.** Add an "Error Handling" or "Edge Cases" section with failure modes and recovery steps.
+- **Use plan-validate-execute for multi-step operations.** Before executing a batch of changes, instruct the agent to describe what it will do (plan), validate the plan against constraints (validate), then execute (execute). This reduces drift in multi-file operations.
+- **Calibrate instruction specificity to task fragility.** For high-stakes operations (filesystem changes, network calls, credential handling), use strict step-by-step instructions with error recovery. For low-stakes operations (reading files, suggesting alternatives), allow more degrees of freedom. Refer to the AgentSkills.io "calibrating control" principle.
+- **Prefer domain-specific context over generic knowledge.** Ground instructions in the user's actual project, not general best practices. For example, instead of "use React patterns", specify "use the project's `src/components/` pattern with named exports and barrel files". A skill should encode project conventions, not duplicate framework documentation.
 
 ### Step 6: Create Supporting Files
 
@@ -217,6 +240,41 @@ Before finishing, walk through this checklist:
 - [ ] All paths use forward slashes, regardless of OS
 - [ ] Symlink exists: `~/.config/maki/skills/<name>/` → `skills/<name>/`
 
+### Step 8: Validation & Evaluation
+
+After writing, validate the skill systematically before declaring it complete. Follow this 4-step process adapted from the mgechev/skills-best-practices guide:
+
+#### 1. Discovery Validation
+
+Load the skill with a test prompt that should trigger it. Verify the agent actually loads the skill. If not, the description needs better trigger wording.
+
+#### 2. Logic Validation
+
+Present a concrete test case to the agent running the skill. Check: does the agent follow the correct workflow? Does it apply decision trees correctly? Does it reference JiT files at the right moment?
+
+#### 3. Edge Case Testing
+
+Feed the agent inputs that are edge cases or error conditions from your Edge Cases section. Verify the agent picks the right recovery path.
+
+#### 4. Architecture Refinement
+
+Review the skill holistically:
+- Is the level of detail appropriate? (not too prescriptive for experts, not too vague for beginners)
+- Are the boundaries clear? (what the skill does vs what it doesn't)
+- Could any part be simplified or removed?
+
+#### Skillgrade Evaluation (Recommended)
+
+For production skills, use [mgechev/skillgrade](https://github.com/mgechev/skillgrade) to run automated evaluations:
+
+1. Write an `eval.yaml` in the skill directory defining tasks and graders (LLM rubric or deterministic checks)
+2. Run `npx skillgrade eval.yaml` to score the skill
+3. Use `--smoke` for quick checks during development, `--reliable` for pre-commit gates, `--regression` for full test suites
+4. Set CI gates with `skillgrade eval.yaml --ci --threshold 0.8`
+5. Iterate on the skill until scores meet your threshold
+
+Reference: see `references/validation-guide.md` for a full validation workflow template.
+
 ## Enhancement Workflow
 
 ### Step 1: Audit the Existing Skill
@@ -259,7 +317,7 @@ Make the changes directly to the skill files. For each change:
 
 ### Step 4: Validate
 
-Ask the user to test the enhanced skill by triggering it with a sample prompt. If issues arise, iterate.
+Ask the user to test the enhanced skill by triggering it with a sample prompt (Discovery Validation from the creation Step 8). If issues arise, iterate.
 
 ## Security Guidelines
 
@@ -269,7 +327,8 @@ Adapted from the OWASP Skill Development Guide:
 - **Input validation**: Validate all user inputs at multiple layers
 - **Error messages**: Don't leak system paths or internals in error messages
 - **No hardcoded secrets**: Never put API keys, tokens, or credentials in skill files
-- **Pre-mutation receipts**: If the skill writes to the filesystem, describe what it will write before doing so (see OWASP pre-mutation receipt pattern)
+- **Pre-mutation receipts**: If the skill writes to the filesystem, the agent MUST describe what it will write before doing so. This follows the OWASP pre-mutation receipt pattern: state the file path, a summary of content, and the operation type (create, update, delete) before executing. This gives the user a chance to veto.
+- **Eval security**: Evaluation tasks (skillgrade or custom) should never execute production code, call live APIs, or access real credentials. Always use sandboxed or mocked execution.
 
 Reference: `OWASP Skill Development Guide` at https://owasp.org/www-project-agentic-skills-top-10/skill-development-guide
 
@@ -290,7 +349,8 @@ skills/<skill-name>/
 ├── SKILL.md    # Frontmatter + section headers
 ├── scripts/
 ├── references/
-└── assets/
+├── assets/
+└── examples/
 ```
 
 See `--help` for all options.
@@ -299,6 +359,8 @@ See `--help` for all options.
 
 - `references/validation-checklist.md` — The full final review checklist from the creation workflow. Read before finishing any skill.
 - `references/maki-skill-spec.md` — Detailed Maki skill format specification. Read when the user asks about format details, frontmatter rules, or compatibility.
+- `references/skillgrade-eval.md` — Template for skillgrade evaluation configuration. Read when the user wants to add automated testing to a skill.
+- `references/validation-guide.md` — Full 4-step validation workflow with task templates. Read during Step 8 (Validation & Evaluation).
 
 ## Edge Cases
 
@@ -311,3 +373,6 @@ See `--help` for all options.
 | **SKILL.md exceeds 500 lines after enhancement** | Offload reference tables and verbose examples to `references/` before considering the enhancement complete |
 | **User wants to delete a skill** | Refuse — this skill creates and enhances, it does not delete. Suggest manual `rm` of the symlink and directory |
 | **Scaffold script unavailable** | Create the directory and SKILL.md skeleton manually — the structure is well-defined above |
+| **Skill needs automated testing/evaluation** | Create an `eval.yaml` following the skillgrade format and integrate it into the validation step. See `references/skillgrade-eval.md`. |
+| **User is building a skill for a third-party platform** | Document platform-specific constraints in the frontmatter `compatibility` or `metadata` fields. Cross-reference relevant platform API docs in `references/`. |
+| **Skill involves sensitive operations (file writes, API calls)** | Add explicit pre-mutation receipt instructions in the relevant workflow step. Ensure the agent describes changes before executing them. |

@@ -2,6 +2,8 @@
 name: full-skill
 description: "Does X and Y for Z. Use when the user wants to build Z, configure Y, or debug X. Not for A, B, or C."
 compatibility: opencode
+allowed-tools: bash,read,write     # Optional: restrict tools
+license: MIT                        # Optional: SPDX identifier
 ---
 
 ## Purpose
@@ -53,6 +55,10 @@ scripts/script-name.sh --flag value
 ## Assets
 
 - `assets/template.yaml` — What this template is for and when to copy/fill it.
+
+## Examples
+
+- `examples/basic-usage/` — Example showing basic skill invocation and expected output.
 
 ## Edge Cases
 

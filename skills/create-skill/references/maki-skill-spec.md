@@ -31,6 +31,8 @@ Skills are symlinked from the source repository:
 name: my-skill
 description: Does X and Y for Z. Use when the user wants to... Not for...
 compatibility: opencode
+allowed-tools: bash,read,write
+license: MIT
 ---
 ```
 
@@ -45,6 +47,18 @@ compatibility: opencode
 
 - SKILL.md should be under 500 lines (the mgechev guideline)
 - Use progressive disclosure: keep high-level logic in SKILL.md, offload details to `references/`, `scripts/`, `assets/`
+- Reference files explicitly with JiT (Just-in-Time) loading instructions: "See `references/auth-flow.md` for error codes"
+- Use relative paths with forward slashes regardless of OS
+- No README.md, CHANGELOG.md, or other documentation files in skill directories
+- No library code — scripts should be tiny, single-purpose executables
+
+## Known Limitations
+
+- No skill dependency mechanism (cannot declare that one skill requires another)
+- No versioning or migration support
+- No access control or permission scoping per skill
+- No built-in validation or testing framework
+ts/`, `assets/`
 - Reference files explicitly with JiT (Just-in-Time) loading instructions: "See `references/auth-flow.md` for error codes"
 - Use relative paths with forward slashes regardless of OS
 - No README.md, CHANGELOG.md, or other documentation files in skill directories
