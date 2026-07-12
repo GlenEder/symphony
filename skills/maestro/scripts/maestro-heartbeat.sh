@@ -10,6 +10,7 @@ HELP_MESSAGE="Usage: maestro-heartbeat.sh --plan-name <name> [options]
   Saves its PID to a file so subsequent invocations reuse the same process.
 
   --plan-name <name>        Plan name (required, matches .toon filename without extension)
+  --plan-id <name>          Alias for --plan-name
   --maestro-dir <path>      Path to maestro directory (default: MAESTRO_DIR env or .)
   --port <port>             Maestro server port (default: 8080)
   --interval <s>            Seconds between heartbeats (default: 15)
@@ -30,7 +31,7 @@ stop=false
 
 while [[ "$#" -gt 0 ]]; do
   case $1 in
-    --plan-name)
+    --plan-name|--plan-id)
       plan_name=$2
       shift 2
       ;;

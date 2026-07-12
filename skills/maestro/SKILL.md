@@ -40,6 +40,8 @@ scripts/maestro-listen.sh --plan-name demo --port 8080 --timeout 7200
 
 Run both from the project root or `maestro/` dir. See `--help` on each for all options.
 
+> **Flag note:** `--plan-name` is the primary flag for specifying which plan to interact with. Both scripts also accept `--plan-id` as an alias for convenience.
+
 ### Configuration
 
 | Env Var       | Default                | Description                                      |
@@ -463,7 +465,7 @@ scripts/maestro-listen.sh --plan-name "{plan-name}" --port 8080 --timeout 7200
 
 | Flag | Default | Description |
 |------|---------|-------------|
-  | `--plan-name` | *(required)* | Plan name to watch |
+| `--plan-name` | *(required)* | Plan name to watch (primary flag; `--plan-id` accepted as alias) |
   | `--maestro-dir` | `MAESTRO_DIR` or `.` | Path to maestro directory |
 | `--port` | `8080` | Maestro server port |
 | `--timeout` | `7200` | Max seconds to wait (0 = no limit) |
@@ -539,17 +541,17 @@ If the user presses Ctrl-C during the file-watch (the bash call fails/interrupts
 1. Start server, create plan, open browser
 2. Initialize last_seen_msg_ids = {}  (from current plan messages)
 3. Loop:
-   a. Run maestro-listen.sh (handles heartbeat + file watch, returns plan JSON)
-      plan_json=$(scripts/maestro-listen.sh --plan-id {id} --port 8080 --timeout 7200)
+   a. Run maestro-listen.sh (watches for plan file changes, returns plan JSON)
+      plan_json=$(scripts/maestro-listen.sh --plan-name {plan-name} --port 8080 --timeout 7200)
    b. Parse JSON from $plan_json
    c. For each msg in plan.messages where role=="human" and id not in last_seen_msg_ids:
       - Analyze: resolve item_ref if set, read context from plan.modules
       - Respond: POST /api/plan/{id}/messages (role="agent", text="...")
       - Update last_seen_msg_ids
       (thinking/listening transitions are automatic — no status calls needed)
-   d. If plan.state == "approved":
-      - Set offline (already done by maestro-listen.sh cleanup, but explicit is fine too):
-        curl -X POST http://localhost:8080/api/agent/{id}/status -d '{"status":"offline"}'
+    d. If plan.state == "approved":
+       - Set offline:
+         curl -X POST http://localhost:8080/api/agent/{id}/status -d '{"status":"offline"}'
       - Post final acknowledgment
       - Break loop → proceed to implementation
    e. If user interrupted → ask what to do

@@ -10,6 +10,7 @@ HELP_MESSAGE="Usage: maestro-listen.sh --plan-name <name> [options]
   Does NOT manage heartbeats — run maestro-heartbeat.sh separately.
 
   --plan-name <name>        Plan name to watch (required, matches .toon filename without extension)
+  --plan-id <name>          Alias for --plan-name
   --maestro-dir <path>      Path to maestro directory (default: MAESTRO_DIR env or .)
   --port <port>             Maestro server port (default: 8080)
   --timeout <s>             Max seconds to wait for file change (default: 7200, 0 = no limit)
@@ -29,7 +30,7 @@ poll_fallback_sleep=2
 
 while [[ "$#" -gt 0 ]]; do
   case $1 in
-    --plan-name)
+    --plan-name|--plan-id)
       plan_name=$2
       shift 2
       ;;
