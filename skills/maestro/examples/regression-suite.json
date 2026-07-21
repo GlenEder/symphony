@@ -1,0 +1,90 @@
+{
+  "title": "Regression Test Suite Migration",
+  "summary": "Migrate end-to-end regression tests from Cypress to Playwright across all product modules.",
+  "modules": [
+    {
+      "type": "criteria",
+      "heading": "Acceptance Criteria",
+      "items": [
+        {"text": "All existing Cypress test scenarios have an equivalent Playwright test"},
+        {"text": "CI pipeline runs Playwright suite and reports results to GitHub Checks"},
+        {"text": "Playwright tests pass consistently across Chrome, Firefox, and WebKit"},
+        {"text": "Test execution time does not exceed current Cypress runtime by more than 20%"},
+        {"text": "Flaky test detection and auto-retry is configured for all new Playwright tests"}
+      ]
+    },
+    {
+      "type": "steps",
+      "heading": "Migration Steps",
+      "items": [
+        {"text": "Audit existing Cypress test suite and catalog all test scenarios", "owner": "qa-team", "status": "done"},
+        {"text": "Set up Playwright project with TypeScript, ESLint, and Prettier", "owner": "qa-team", "status": "done"},
+        {"text": "Migrate authentication and session tests (12 scenarios)", "owner": "qa-team", "status": "in-progress"},
+        {"text": "Migrate checkout flow tests (8 scenarios)", "owner": "qa-team", "status": "pending"},
+        {"text": "Migrate search and browse tests (15 scenarios)", "owner": "qa-team", "status": "pending"},
+        {"text": "Update CI pipeline to run Playwright and remove Cypress step", "owner": "devops", "status": "pending"},
+        {"text": "Run full regression suite in staging for 5 consecutive days before cutover", "owner": "both", "status": "pending"}
+      ]
+    },
+    {
+      "type": "risks",
+      "heading": "Risks",
+      "items": [
+        {
+          "text": "Playwright may not support certain Cypress-specific plugins (cy.route, cy.intercept patterns)",
+          "severity": "medium",
+          "impact": "Some tests may need redesign or alternative approaches",
+          "mitigation": "Audit plugin usage before migration begins; prototype alternatives early"
+        },
+        {
+          "text": "Flaky E2E tests could erode team confidence in the new suite",
+          "severity": "high",
+          "impact": "Teams may push back on Playwright adoption",
+          "mitigation": "Configure Playwright flaky test detection with 3x auto-retry; track flake rate in dashboard"
+        },
+        {
+          "text": "Test execution time could regress due to Playwright's multi-browser matrix",
+          "severity": "medium",
+          "impact": "CI pipeline duration increases, blocking developer velocity",
+          "mitigation": "Run browsers in parallel via Playwright sharding; set a hard 10-minute CI limit"
+        },
+        {
+          "text": "Team lacks Playwright expertise initially",
+          "severity": "low",
+          "impact": "Migration takes longer than estimated",
+          "mitigation": "Pair a senior QA engineer on first 3 migration sprints; schedule workshop"
+        }
+      ]
+    },
+    {
+      "type": "assumptions",
+      "heading": "Assumptions",
+      "items": [
+        {"text": "All current test environments are compatible with Playwright browser binaries"},
+        {"text": "The team can maintain both test suites during a 2-week parallel run period"},
+        {"text": "No major application architecture changes are planned during the migration window"},
+        {"text": "Playwright's request interception API covers all existing mock scenarios"}
+      ]
+    },
+    {
+      "type": "changes",
+      "heading": "Changes Required",
+      "items": [
+        {"text": "e2e/playwright/ (new directory)", "type": "config"},
+        {"text": "e2e/cypress/ (remove after migration)", "type": "config"},
+        {"text": ".github/workflows/e2e.yml", "type": "config"},
+        {"text": "playwright.config.ts", "type": "config"},
+        {"text": "docs/testing/regression-checklist.md", "type": "docs"}
+      ]
+    },
+    {
+      "type": "notes",
+      "heading": "Notes",
+      "items": [
+        {"text": "Playwright's codegen tool (`npx playwright codegen`) should be used to accelerate initial test scaffolding."},
+        {"text": "Create a shared test fixture factory to reduce duplication across migrated scenarios."},
+        {"text": "Flag any test that requires visual regression comparison — those may need percy.io or Playwright's built-in snapshot."}
+      ]
+    }
+  ]
+}

@@ -5,20 +5,29 @@ import (
 	"testing"
 )
 
-const decisionPlan = `title: Decision Test
-summary: exercises the decision module type
-
-modules[1]:
-  - type: decision
-    heading: Key Decisions
-    items[2]:
-      - text: Use library X for the search layer
-        options: "library Y — too heavy; library Z — unmaintained"
-        rationale: "X wins on speed and maintenance"
-      - text: Build the indexing pipeline in-house
-        options: "build in-house; buy SaaS"
-        rationale: "tight latency requirements justify the build cost"
-state: draft`
+const decisionPlan = `{
+  "title": "Decision Test",
+  "summary": "exercises the decision module type",
+  "state": "draft",
+  "modules": [
+    {
+      "type": "decision",
+      "heading": "Key Decisions",
+      "items": [
+        {
+          "text": "Use library X for the search layer",
+          "options": "library Y — too heavy; library Z — unmaintained",
+          "rationale": "X wins on speed and maintenance"
+        },
+        {
+          "text": "Build the indexing pipeline in-house",
+          "options": "build in-house; buy SaaS",
+          "rationale": "tight latency requirements justify the build cost"
+        }
+      ]
+    }
+  ]
+}`
 
 func TestDecodePlan_DecisionModule(t *testing.T) {
 	plan, err := decodePlan([]byte(decisionPlan))

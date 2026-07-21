@@ -10,21 +10,28 @@ import (
 
 func writeTempPlan(t *testing.T, dir, id, content string) string {
 	t.Helper()
-	path := filepath.Join(dir, id+".toon")
+	path := filepath.Join(dir, id+".json")
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
 	return path
 }
 
-const samplePlan = `title: Test Plan
-summary: A test plan
-
-modules[1]:
-  - heading: Criteria
-    items[1]{text}:
-      it works
-    type: criteria`
+const samplePlan = `{
+  "title": "Test Plan",
+  "summary": "A test plan",
+  "modules": [
+    {
+      "heading": "Criteria",
+      "items": [
+        {
+          "text": "it works"
+        }
+      ],
+      "type": "criteria"
+    }
+  ]
+}`
 
 func TestStore_IsSelfWrite(t *testing.T) {
 	dir := t.TempDir()
@@ -32,11 +39,11 @@ func TestStore_IsSelfWrite(t *testing.T) {
 
 	// Load a plan
 	writeTempPlan(t, dir, "test", samplePlan)
-	store.loadFile(filepath.Join(dir, "test.toon"))
+	store.loadFile(filepath.Join(dir, "test.json"))
 
 	// Initially, no write tracked — IsSelfWrite should return false
 	beforeMtime := time.Now()
-	if store.IsSelfWrite("test.toon", beforeMtime) {
+	if store.IsSelfWrite("test.json", beforeMtime) {
 		t.Error("expected false before any persistPlan")
 	}
 
@@ -46,21 +53,21 @@ func TestStore_IsSelfWrite(t *testing.T) {
 	}
 
 	// Should match the recorded mtime via os.Stat
-	fi, err := os.Stat(filepath.Join(dir, "test.toon"))
+	fi, err := os.Stat(filepath.Join(dir, "test.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !store.IsSelfWrite("test.toon", fi.ModTime()) {
+	if !store.IsSelfWrite("test.json", fi.ModTime()) {
 		t.Error("expected true after persistPlan")
 	}
 
 	// A different mtime should return false
-	if store.IsSelfWrite("test.toon", fi.ModTime().Add(-time.Hour)) {
+	if store.IsSelfWrite("test.json", fi.ModTime().Add(-time.Hour)) {
 		t.Error("expected false for different mtime")
 	}
 
 	// Unknown file should return false
-	if store.IsSelfWrite("nonexistent.toon", time.Now()) {
+	if store.IsSelfWrite("nonexistent.json", time.Now()) {
 		t.Error("expected false for unknown file")
 	}
 }
@@ -70,20 +77,20 @@ func TestStore_IsSelfWrite_FilenameIdMapping(t *testing.T) {
 	store := NewPlanStore(dir, nil)
 
 	writeTempPlan(t, dir, "demo-plan", samplePlan)
-	store.loadFile(filepath.Join(dir, "demo-plan.toon"))
+	store.loadFile(filepath.Join(dir, "demo-plan.json"))
 
 	if err := store.persistPlan("demo-plan"); err != nil {
 		t.Fatal(err)
 	}
 
-	fi, err := os.Stat(filepath.Join(dir, "demo-plan.toon"))
+	fi, err := os.Stat(filepath.Join(dir, "demo-plan.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// IsSelfWrite takes the filename (not the ID), strips .toon internally
-	if !store.IsSelfWrite("demo-plan.toon", fi.ModTime()) {
-		t.Error("IsSelfWrite should match filename with .toon extension")
+	// TestStore_IsSelfWrite_FilenameIdMapping
+	if !store.IsSelfWrite("demo-plan.json", fi.ModTime()) {
+		t.Error("IsSelfWrite should match filename with .json extension")
 	}
 }
 
@@ -301,13 +308,13 @@ func TestStore_PersistPlanRecordsMtime(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fi, err := os.Stat(filepath.Join(dir, "mtime-test.toon"))
+	fi, err := os.Stat(filepath.Join(dir, "mtime-test.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// The recorded mtime should match the actual file mtime
-	if !store.IsSelfWrite("mtime-test.toon", fi.ModTime()) {
+	if !store.IsSelfWrite("mtime-test.json", fi.ModTime()) {
 		t.Error("persistPlan should record the file mtime")
 	}
 }

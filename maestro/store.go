@@ -10,8 +10,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/sstraus/toon_go/toon"
 )
 
 // PlanStore holds loaded plans and notifies on changes.
@@ -32,7 +30,7 @@ func NewPlanStore(dir string, onChange func(id string)) *PlanStore {
 	}
 }
 
-// LoadAll reads all .toon files from the plans directory.
+// LoadAll reads all .json files from the plans directory.
 func (s *PlanStore) LoadAll() error {
 	entries, err := os.ReadDir(s.dir)
 	if err != nil {
@@ -42,7 +40,7 @@ func (s *PlanStore) LoadAll() error {
 		return err
 	}
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".toon") {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
 		s.loadFile(filepath.Join(s.dir, e.Name()))
@@ -51,22 +49,14 @@ func (s *PlanStore) LoadAll() error {
 }
 
 func decodePlan(data []byte) (*Plan, error) {
-	var raw map[string]any
-	if err := toon.Unmarshal(data, &raw, &toon.DecodeOptions{Strict: false}); err != nil {
-		return nil, fmt.Errorf("toon decode: %w", err)
-	}
-	js, err := json.Marshal(raw)
-	if err != nil {
-		return nil, fmt.Errorf("json marshal: %w", err)
-	}
 	var plan Plan
-	if err := json.Unmarshal(js, &plan); err != nil {
-		return nil, fmt.Errorf("json unmarshal: %w", err)
+	if err := json.Unmarshal(data, &plan); err != nil {
+		return nil, fmt.Errorf("json decode: %w", err)
 	}
 	return &plan, nil
 }
 
-// loadFile reads a single .toon file and stores it by its basename (without ext).
+// loadFile reads a single .json file and stores it by its basename (without ext).
 func (s *PlanStore) loadFile(path string) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -90,14 +80,14 @@ func (s *PlanStore) loadFile(path string) {
 			}
 		}
 	}
-	id := strings.TrimSuffix(filepath.Base(path), ".toon")
+	id := strings.TrimSuffix(filepath.Base(path), ".json")
 	s.mu.Lock()
 	s.plans[id] = plan
 	s.mu.Unlock()
 	log.Printf("loaded plan: %s (%s)", id, plan.Title)
 }
 
-// persistPlan writes the in-memory plan to disk as a .toon file
+// persistPlan writes the in-memory plan to disk as a .json file
 // and records the file's mtime so the poller can skip the self-triggered reload.
 func (s *PlanStore) persistPlan(id string) error {
 	plan, ok := s.plans[id]
@@ -105,20 +95,12 @@ func (s *PlanStore) persistPlan(id string) error {
 		return fmt.Errorf("plan not found: %s", id)
 	}
 	plan.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-	js, err := json.Marshal(plan)
+	js, err := json.MarshalIndent(plan, "", "  ")
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
 	}
-	var raw map[string]any
-	if err := json.Unmarshal(js, &raw); err != nil {
-		return fmt.Errorf("json unmarshal: %w", err)
-	}
-	toonBytes, err := toon.Marshal(raw, &toon.EncodeOptions{Indent: 2})
-	if err != nil {
-		return fmt.Errorf("toon marshal: %w", err)
-	}
-	path := filepath.Join(s.dir, id+".toon")
-	if err := os.WriteFile(path, toonBytes, 0644); err != nil {
+	path := filepath.Join(s.dir, id+".json")
+	if err := os.WriteFile(path, js, 0644); err != nil {
 		return err
 	}
 	// Record the mtime to prevent the poller from re-reading our own write
@@ -234,7 +216,7 @@ func (s *PlanStore) DeleteMessage(planID, msgID string) error {
 	return nil
 }
 
-// DeletePlan removes a plan from in-memory store and deletes its .toon file from disk.
+// DeletePlan removes a plan from in-memory store and deletes its .json file from disk.
 func (s *PlanStore) DeletePlan(id string) error {
 	s.mu.Lock()
 
@@ -245,7 +227,7 @@ func (s *PlanStore) DeletePlan(id string) error {
 	delete(s.plans, id)
 	s.mu.Unlock()
 
-	path := filepath.Join(s.dir, id+".toon")
+	path := filepath.Join(s.dir, id+".json")
 	if err := os.Remove(path); err != nil {
 		return fmt.Errorf("delete plan file: %w", err)
 	}
@@ -296,6 +278,54 @@ func (s *PlanStore) Get(id string) *Plan {
 	return s.plans[id]
 }
 
+// UpsertPlan creates or replaces a plan in the store and persists it to disk.
+func (s *PlanStore) UpsertPlan(id string, plan *Plan) error {
+	plan.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	s.mu.Lock()
+	s.plans[id] = plan
+	s.mu.Unlock()
+
+	if err := s.persistPlan(id); err != nil {
+		return err
+	}
+	if s.onChange != nil {
+		s.onChange(id)
+	}
+	return nil
+}
+
+// PatchPlan merges partial updates into an existing plan, preserving messages.
+// Only non-zero/non-empty fields in the input are applied.
+func (s *PlanStore) PatchPlan(id string, patch *Plan) error {
+	s.mu.Lock()
+	existing, ok := s.plans[id]
+	if !ok {
+		s.mu.Unlock()
+		return fmt.Errorf("plan not found: %s", id)
+	}
+	if patch.Title != "" {
+		existing.Title = patch.Title
+	}
+	if patch.Summary != "" {
+		existing.Summary = patch.Summary
+	}
+	if patch.State != "" {
+		existing.State = patch.State
+	}
+	if patch.Modules != nil {
+		existing.Modules = patch.Modules
+	}
+	s.mu.Unlock()
+
+	if err := s.persistPlan(id); err != nil {
+		return err
+	}
+	if s.onChange != nil {
+		s.onChange(id)
+	}
+	return nil
+}
+
 // List returns all plan IDs and their titles, sorted by most recently updated first.
 func (s *PlanStore) List() []PlanSummary {
 	s.mu.RLock()
@@ -325,7 +355,7 @@ func (s *PlanStore) List() []PlanSummary {
 // IsSelfWrite checks whether the server itself wrote this file at the given mtime.
 // This lets the poller skip redundant reloads after server-initiated writes.
 func (s *PlanStore) IsSelfWrite(filename string, mtime time.Time) bool {
-	id := strings.TrimSuffix(filename, ".toon")
+	id := strings.TrimSuffix(filename, ".json")
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	last, ok := s.lastWrite[id]

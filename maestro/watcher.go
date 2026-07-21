@@ -7,13 +7,13 @@ import (
 	"time"
 )
 
-// FilePoller watches a directory for .toon file changes by polling modtimes.
+// FilePoller watches a directory for .json file changes by polling modtimes.
 // Works reliably across all filesystem types including Docker volumes, NFS, and FUSE.
 type FilePoller struct {
 	stop chan struct{}
 }
 
-// StartWatcher starts polling for .toon file changes in dir at the given interval.
+// StartWatcher starts polling for .json file changes in dir at the given interval.
 // Returns a FilePoller that can be stopped via Close().
 func StartWatcher(store *PlanStore, dir string, interval time.Duration) *FilePoller {
 	pw := &FilePoller{stop: make(chan struct{})}
@@ -36,7 +36,7 @@ func StartWatcher(store *PlanStore, dir string, interval time.Duration) *FilePol
 				current := make(map[string]bool, len(entries))
 
 				for _, e := range entries {
-					if e.IsDir() || !strings.HasSuffix(e.Name(), ".toon") {
+					if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 						continue
 					}
 					current[e.Name()] = true
@@ -59,7 +59,7 @@ func StartWatcher(store *PlanStore, dir string, interval time.Duration) *FilePol
 						continue
 					}
 
-					id := strings.TrimSuffix(e.Name(), ".toon")
+					id := strings.TrimSuffix(e.Name(), ".json")
 					store.loadFile(path)
 					if store.onChange != nil {
 						store.onChange(id)
@@ -69,7 +69,7 @@ func StartWatcher(store *PlanStore, dir string, interval time.Duration) *FilePol
 				// Detect deleted files
 				for name := range knownMTimes {
 					if !current[name] {
-						id := strings.TrimSuffix(name, ".toon")
+						id := strings.TrimSuffix(name, ".json")
 						store.RemovePlan(id)
 						if store.onChange != nil {
 							store.onChange(id)

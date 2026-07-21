@@ -296,6 +296,44 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 		w.Write(fp.JSON())
 	})
 
+	// POST /api/plan/{id} — create or upsert a plan (raw JSON body)
+	http.HandleFunc("POST /api/plan/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		var plan Plan
+		if err := json.NewDecoder(r.Body).Decode(&plan); err != nil {
+			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err := store.UpsertPlan(id, &plan); err != nil {
+			log.Printf("upsert plan error: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		fp := toFlatPlan(store.Get(id), agentState.GetStatus(id))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(fp.JSON())
+	})
+
+	// PATCH /api/plan/{id} — partial update preserving messages
+	http.HandleFunc("PATCH /api/plan/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		var patch Plan
+		if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
+			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err := store.PatchPlan(id, &patch); err != nil {
+			log.Printf("patch plan error: %v", err)
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		fp := toFlatPlan(store.Get(id), agentState.GetStatus(id))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(fp.JSON())
+	})
+
 	// WebSocket for plan updates (Go 1.22+ parameterized pattern)
 	http.HandleFunc("/ws/plan/{id}", hub.handleWS(store, agentState))
 

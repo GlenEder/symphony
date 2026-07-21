@@ -9,7 +9,7 @@ HELP_MESSAGE="Usage: maestro-listen.sh --plan-name <name> [options]
 
   Does NOT manage heartbeats — run maestro-heartbeat.sh separately.
 
-  --plan-name <name>        Plan name to watch (required, matches .toon filename without extension)
+   --plan-name <name>        Plan name to watch (required, matches .json filename without extension)
   --plan-id <name>          Alias for --plan-name
   --maestro-dir <path>      Path to maestro directory (default: MAESTRO_DIR env or .)
   --port <port>             Maestro server port (default: 8080)
@@ -74,7 +74,14 @@ if [[ -z "$plan_name" ]]; then
   exit 1
 fi
 
-plan_file="$maestro_dir/plans/$plan_name.toon"
+# Determine plans directory: use MAESTRO_PLANS_DIR if set, otherwise default to maestro_dir/plans
+if [[ -n "${MAESTRO_PLANS_DIR:-}" ]]; then
+  plans_dir="$MAESTRO_PLANS_DIR"
+else
+  plans_dir="$maestro_dir/plans"
+fi
+
+plan_file="$plans_dir/$plan_name.json"
 base_url="http://localhost:$port"
 
 if ! [[ -f "$plan_file" ]]; then

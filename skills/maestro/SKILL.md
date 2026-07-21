@@ -1,15 +1,15 @@
 ---
 name: maestro
-description: Run the Maestro planning server to publish a plan as a .toon file and drive the live feedback loop with the user until the plan is approved. Use when the user wants to publish a plan for review, mentions Maestro, .toon plan files, the planning server, or "approve the plan", or when another skill needs to hand a plan to the user for review.
+description: Run the Maestro planning server to publish a plan as a JSON file and drive the live feedback loop with the user until the plan is approved. Use when the user wants to publish a plan for review, mentions Maestro, plan files, the planning server, or "approve the plan", or when another skill needs to hand a plan to the user for review.
 compatibility: opencode
 ---
 
 ## Purpose
 
-Maestro is a lightweight Go web server that serves structured planning documents from TOON-encoded `.toon` files.
+Maestro is a lightweight Go web server that serves structured planning documents from JSON plan files.
 It gives a plan a web UI, a JSON API, and WebSocket live reload, so an agent can publish a plan and then run a feedback loop with the user until the plan is approved.
 
-Plans are composed of typed modules — criteria, steps, risks, assumptions, changes, notes, questions — stored as `.toon` files in a configurable directory.
+Plans are composed of typed modules — criteria, steps, risks, assumptions, changes, notes, questions — stored as `.json` files in a configurable directory.
 
 ## Quick Start
 
@@ -34,13 +34,13 @@ Run all three from the project root or `maestro/` dir; see `--help` on each for 
 | Env var | Default | Description |
 |---|---|---|
 | `PORT` | `8080` | HTTP server port |
-| `MAESTRO_PLANS_DIR` | `plans` | Directory with `.toon` files |
+| `MAESTRO_PLANS_DIR` | `plans` | Directory with `.json` files |
 | `MAESTRO_DIR` | Binary dir or CWD | Directory containing `templates/` and `static/` assets; also the default for the scripts' `--maestro-dir` flag |
 | `MAESTRO_POLL_INTERVAL` | `500ms` | File polling interval (e.g. `100ms`, `2s`) |
 
 ## Plan Data Model
 
-A plan is a TOON file with these plan-specific fields:
+A plan is a JSON file with these fields:
 
 | Field | Type | Description |
 |---|---|---|
@@ -49,20 +49,27 @@ A plan is a TOON file with these plan-specific fields:
 | `state` | string | `draft` or `approved` |
 | `modules` | array | Plan module list |
 
-```toon
-title: Plan Title
-summary: Short description of the plan
-state: draft|approved
-
-modules[N]:
-  - heading: Module Heading
-    items[N]{field1,field2,…}:
-      # data rows (indented 2 spaces deeper than the items header)
-    type: <module-type>
+```json
+{
+  "title": "Plan Title",
+  "summary": "Short description of the plan",
+  "state": "draft",
+  "modules": [
+    {
+      "type": "criteria",
+      "heading": "Module Heading",
+      "items": [
+        {"text": "First item"},
+        {"text": "Second item"}
+      ]
+    }
+  ]
+}
 ```
 
-For TOON syntax (key/value, `key[N]:` arrays, tabular tuples, list form, indentation), see the **toon** skill — this skill documents only the plan-specific shape above.
-Items may be written in either tabular tuple form (compact, shown above) or list form (`- text: …`, `- owner: …`); see `examples/` for both, and [`GLOSSARY.md`](GLOSSARY.md) for a worked example of each module type in both forms.
+Each module has a `type` and `heading`, plus a `items` array of objects whose fields depend on the module type (see [Module Types](#module-types) below).
+
+For module type field reference and worked examples, see [`GLOSSARY.md`](GLOSSARY.md).
 
 ### Module Types
 
@@ -83,17 +90,41 @@ All types use `text` (required) as the primary description; the other fields var
 
 ### Plan File Storage
 
-- Plans are stored as `.toon` files in `MAESTRO_PLANS_DIR`.
-- The file name (without `.toon`) is the plan ID used in URLs and API calls.
-- The server polls for `.toon` changes (default 500ms) and reloads automatically, broadcasting to connected clients via WebSocket.
+- Plans are stored as `.json` files in `MAESTRO_PLANS_DIR`.
+- The file name (without `.json`) is the plan ID used in URLs and API calls.
+- The server polls for `.json` changes (default 500ms) and reloads automatically, broadcasting to connected clients via WebSocket.
 - Server-initiated writes are tracked and skipped by the poller to avoid redundant reloads.
 - `POST /api/admin/reload` forces an immediate full rescan.
 
-See `examples/demo.toon` for a minimal plan (tabular tuple form) and `examples/regression-suite.toon` for a larger one (list form).
+See `examples/demo.json` and `examples/regression-suite.json` for worked examples.
 
 ## API
 
-The feedback loop only needs three endpoints; the full reference is in [`API.md`](API.md).
+The feedback loop only needs these endpoints; the full reference is in [`API.md`](API.md).
+
+### Create or update a plan
+
+```
+POST /api/plan/{id}
+Content-Type: application/json
+
+{ full plan JSON body }
+```
+
+Creates a new plan or overwrites an existing one (upsert).
+Returns the full plan JSON including any existing messages.
+
+### Partial plan update
+
+```
+PATCH /api/plan/{id}
+Content-Type: application/json
+
+{"title": "...", "summary": "...", "state": "...", "modules": [...]}
+```
+
+Only specified fields are updated. Messages are always preserved.
+Returns the full updated plan.
 
 ### Add a message
 
@@ -129,12 +160,22 @@ The server drives `listening`/`thinking` automatically from message roles; the a
 
 ## Workflow: Authoring a Plan
 
-1. Write a `.toon` file into `MAESTRO_PLANS_DIR/{plan-id}.toon` using the model above.
-2. The server loads it on startup, or within one poll cycle if placed while running.
-3. To update a plan, edit the `.toon` file — the server picks up changes within one poll interval (default 500ms) and broadcasts via WebSocket.
-4. After bulk external edits, call `POST /api/admin/reload` to force an immediate rescan.
+1. POST the plan JSON to the server:
+   ```bash
+   curl -s -X POST "http://localhost:$port/api/plan/{plan-id}" \
+     -H "Content-Type: application/json" \
+     -d '{ "title": "...", "summary": "...", "state": "draft", "modules": [...] }'
+   ```
+   The server validates the JSON and returns the parsed plan.
+2. To update a plan's structure during the feedback loop, use `PATCH /api/plan/{id}`:
+   ```bash
+   curl -s -X PATCH "http://localhost:$port/api/plan/{plan-id}" \
+     -H "Content-Type: application/json" \
+     -d '{ "modules": [...] }'
+   ```
+3. After bulk external edits, call `POST /api/admin/reload` to force an immediate rescan.
 
-Done when: the `.toon` file exists in the plans dir and `GET /api/plan/{id}` returns it.
+Done when: `GET /api/plan/{id}` returns the plan.
 
 ## Feedback Session Workflow
 
@@ -163,14 +204,14 @@ Then:
    started_server=true
    ```
    The server defaults to port 8080 (`PORT` env to override); discovery scans 8080–8089 so a non-default port in that range is still reused.
-3. Write your plan as `plans/{plan-id}.toon` (into `$MAESTRO_PLANS_DIR`).
-   If you reused a server, force a rescan and confirm it sees the file:
-   ```bash
-   curl -s -X POST "http://localhost:$port/api/admin/reload"
-   curl -s "http://localhost:$port/api/plan/{plan-id}" | jq -r .title
-   ```
-   If the title is empty/null, the running server's `MAESTRO_PLANS_DIR` differs from yours — tell the user, then start a fresh server on a free port (`started_server=true`) and write the plan there.
-4. Open the plan in the browser:
+ 3. POST your plan JSON to the server:
+    ```bash
+    curl -s -X POST "http://localhost:$port/api/plan/{plan-id}" \
+      -H "Content-Type: application/json" \
+      -d '{ "title": "...", "summary": "...", "state": "draft", "modules": [...] }'
+    ```
+    The server writes the plan file and returns the parsed plan. No filesystem path knowledge needed — the server owns its plans directory.
+ 4. Open the plan in the browser:
    ```bash
    open "http://localhost:$port/plan/{plan-id}"
    ```
@@ -230,8 +271,14 @@ For each new human message:
 
 1. If `item_ref` is set (e.g. `"2:1"` = module index 2, item index 1), resolve the referenced item from `plan.modules` for context.
 2. Formulate a response addressing the feedback.
-3. If the feedback implies a plan change, update the `.toon` file directly — the file watcher reloads it and broadcasts via WebSocket.
-4. Post your response:
+ 3. If the feedback implies a plan change, update the plan via PATCH:
+    ```bash
+    curl -s -X PATCH "http://localhost:$port/api/plan/{plan-id}" \
+      -H "Content-Type: application/json" \
+      -d '{ "modules": [...] }'
+    ```
+    The server updates the file and broadcasts via WebSocket. Messages are preserved automatically.
+ 4. Post your response:
    ```bash
    curl -s -X POST "http://localhost:$port/api/plan/{plan-id}/messages" \
      -H "Content-Type: application/json" \
@@ -297,16 +344,16 @@ Done when: the user has chosen a path and you have acted on it.
 
 | Scenario | Handling |
 |---|---|
-| **External .toon edits** | The poller detects mtime changes within one interval cycle (default 500ms); `fswatch` is not required |
+| **External .json edits** | The poller detects mtime changes within one interval cycle (default 500ms); `fswatch` is not required |
 | **No `fswatch` available** | `maestro-listen.sh` falls back to `stat` polling (`--poll-fallback-sleep` flag); the server-side poller works regardless |
 | **Server-initiated writes** | The poller skips them via `IsSelfWrite()` mtime matching, avoiding redundant reloads |
-| **Direct .toon mtime edits** | `POST /api/admin/reload` forces an immediate rescan |
-| **User edits `.toon` file directly** | `maestro-listen.sh` wakes on file change; detect module changes via API diff; acknowledge the edits |
+| **Direct .json mtime edits** | `POST /api/admin/reload` forces an immediate rescan |
+| **User edits `.json` file directly** | `maestro-listen.sh` wakes on file change; detect module changes via API diff; acknowledge the edits |
 | **User revokes approval** | `state` goes back to `draft` — stay in the loop; acknowledge the reversal |
 | **Multiple rapid messages** | Process all new messages in batch on one wake; group related responses |
 | **Message deleted** | Messages array shrinks — update your tracking set; no action needed |
 | **Existing server on another port** | `maestro-discover.sh` scans 8080–8089 by default; widen with `--port`/`--max-port` if you run on a custom port |
-| **Existing server, different plans dir** | `POST /api/admin/reload` + `GET /api/plan/{id}` won't surface your plan; start a fresh server on a free port instead |
+| **Existing server, different plans dir** | The `POST /api/plan/{id}` endpoint writes to the server's own plans dir, so this mismatch never occurs |
 | **Server crash** | Re-run `maestro-discover.sh`; if still unreachable, start a fresh server and re-check |
 | **User idle / timeout** | After 30 minutes without any change, ask the user if they are still reviewing |
 
