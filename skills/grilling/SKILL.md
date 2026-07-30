@@ -12,7 +12,16 @@ If a *fact* can be found by exploring the environment (filesystem, tools, etc.),
 
 Do not act on it until I confirm we have reached a shared understanding.
 
-Follow the wizard flow described below for how to interact with me. 
+Follow the wizard flow described below for how to interact with me.
+
+## When to Skip Grilling
+
+Do not grill when:
+- There are fewer than 2 decisions to make (trivial changes)
+- The user explicitly declines ("no grilling", "just do it", "skip questions")
+- All open questions are factual (can be answered by research), not decisional
+
+When in doubt, start grilling — it is cheaper to skip one question than to miss a decision. 
 
 ## Grilling Wizard Flow
 
@@ -115,10 +124,11 @@ Wait for explicit confirmation before proceeding.
 ### 8. When all questions resolved
 
 When the grilling session is complete and all decisions have been made:
-1. Write the updated plan file (JSON) with populated `decision` modules:
-   - `text` — the decision that was made
-   - `options` — alternatives that were considered
-   - `rationale` — reasoning derived from the grilling answers
+1. Write the updated plan file (JSON) with populated modules:
+   - `decision` modules — each resolved question becomes a decision (text, options, rationale)
+   - `steps` — implementation steps derived from the decisions
+   - `risks` — risks identified during the Q&A
+   - `criteria` — acceptance criteria based on what was decided
 2. Optionally, update the `questions` module items to mark things as resolved
 3. Set the plan state to `draft` via `POST /api/plan/{id}/state` (do NOT approve)
 4. Force reload via `POST /api/admin/reload` so the server picks up the module changes
