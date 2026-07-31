@@ -1,13 +1,13 @@
 ---
 name: maestro
-description: Run the Maestro planning server to publish a plan as a JSON file and drive the live feedback loop with the user until the plan is approved. Use when the user wants to publish a plan for review, mentions Maestro, plan files, the planning server, or "approve the plan", or when another skill needs to hand a plan to the user for review.
+description: Run the Maestro planning server to serve planning sessions and drive the live feedback loop with the user until the plan is approved. Use when the user wants to review a plan, mentions Maestro, plan files, the planning server, or "approve the plan", or when another skill needs to hand a plan to the user for review.
 compatibility: opencode
 ---
 
 ## Purpose
 
 Maestro is a lightweight Go web server that serves structured planning documents from JSON plan files.
-It gives a plan a web UI, a JSON API, and WebSocket live reload, so an agent can publish a plan and then run a feedback loop with the user until the plan is approved.
+It gives a plan a web UI, a JSON API, and WebSocket live reload, so an agent can serve planning sessions and then run a feedback loop with the user until the plan is approved.
 
 Plans are composed of typed modules — criteria, steps, risks, assumptions, changes, notes, questions — stored as `.json` files in a configurable directory.
 
@@ -179,7 +179,7 @@ Done when: `GET /api/plan/{id}` returns the plan.
 
 ## Grilling Interview Phase
 
-After authoring the plan, actively interview the user to stress-test the plan before the final review.
+To author the plan, actively interview the user to stress-test the plan before the final review.
 Ask clarifying questions via maestro messages, one at a time, and update the plan with the answers as each question is resolved.
 
 - Use the **grilling** skill to drive this phase: ask probing questions about decisions, risks, assumptions, and trade-offs.
