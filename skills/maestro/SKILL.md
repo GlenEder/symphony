@@ -23,11 +23,25 @@ maestro
 PORT=9090 MAESTRO_PLANS_DIR=/tmp/plans maestro
 ```
 
-Before starting a new server, always check for one already running and reuse it — run `scripts/maestro-discover.sh` (see [Start the session](#1-start-the-session) below).
-Three scripts in `scripts/` support the feedback session — `maestro-discover.sh` finds an already-running server to reuse, `maestro-heartbeat.sh` keeps the server informed the agent is **listening**, and `maestro-listen.sh` watches the plan file and returns plan JSON on change.
-Run all three from the project root or `maestro/` dir; see `--help` on each for all flags.
+Before starting a new server, always probe for one already running and reuse it — a Maestro server responds to `GET /api/plans` with a JSON array (`[`). Scan ports 8080–8089:
 
-> `--plan-name` is the primary flag for selecting a plan (`--plan-id` is an alias).
+```bash
+port=""
+for p in $(seq 8080 8089); do
+  if curl -s --max-time 0.3 "http://localhost:$p/api/plans" 2>/dev/null | grep -q '^\['; then
+    port=$p; break
+  fi
+done
+```
+
+If `$port` is non-empty after the loop, a server is already running there — reuse it.
+The feedback session relies on two mechanisms:
+- **Heartbeat** — a single `curl` POST to `/api/agent/{id}/heartbeat` sent in each poll iteration (not a background process). The server uses this to keep the agent dot **listening** while waiting between messages.
+- **Poll for changes** — a single `GET /api/plan/{id}` call per iteration; the agent compares the returned JSON against the previous state in its own reasoning to detect new messages or approval.
+
+The plan name (used in API URLs like `/api/plan/{plan-name}`) matches the `.json` filename without extension.
+
+> Plan name and plan ID are interchangeable — both refer to the same thing in API paths.
 
 ### Configuration
 
@@ -35,7 +49,7 @@ Run all three from the project root or `maestro/` dir; see `--help` on each for 
 |---|---|---|
 | `PORT` | `8080` | HTTP server port |
 | `MAESTRO_PLANS_DIR` | `plans` | Directory with `.json` files |
-| `MAESTRO_DIR` | Binary dir or CWD | Directory containing `templates/` and `static/` assets; also the default for the scripts' `--maestro-dir` flag |
+| `MAESTRO_DIR` | Binary dir or CWD | Directory containing `templates/` and `static/` assets |
 | `MAESTRO_POLL_INTERVAL` | `500ms` | File polling interval (e.g. `100ms`, `2s`) |
 
 ## Plan Data Model
@@ -197,13 +211,18 @@ The agent dot is the session's heartbeat: it is **listening** while you wait, **
 ### 1. Start the session
 
 Always check for an existing server before starting one — a maestro server left running from a previous session must be reused, not duplicated.
-Run the discovery helper from the project root or `maestro/` dir:
+Probe ports 8080–8089 for a running server (it responds to `GET /api/plans` with a JSON array):
 
 ```bash
-port=$(scripts/maestro-discover.sh --port 8080 --max-port 8089 2>/dev/null || echo "")
+port=""
+for p in $(seq 8080 8089); do
+  if curl -s --max-time 0.3 "http://localhost:$p/api/plans" 2>/dev/null | grep -q '^\['; then
+    port=$p; break
+  fi
+done
 ```
 
-It probes ports 8080–8089 and prints the first one whose `GET /api/plans` returns a JSON array, exiting `1` if none is found.
+The loop exits with `$port` set to the first live port, or empty if none was found.
 Then:
 
 1. If `port` is non-empty, reuse the live server — set `started_server=false`.
@@ -232,41 +251,30 @@ Then:
    > You can comment on individual items by clicking them, send general feedback in the discussion sidebar, and click "Approve Plan" when satisfied.
    > I'll wait here for your feedback.
 
-Carry `$port` and `$started_server` through every later step — all API calls, the heartbeat, and the listen loop use `--port "$port"`.
+Carry `$port` and `$started_server` through every later step — all API calls use `$port` in the base URL.
 
 Done when: a server is reachable (reused or started), the plan file is written and confirmed via `GET /api/plan/{plan-id}`, the browser is open, and the user has been told where to review.
 
-### 2. Start the heartbeat
+### 2. Poll for changes (with heartbeat)
 
-Before entering the listen loop, start a background heartbeat so the server tracks the agent as **listening**:
-
-```bash
-scripts/maestro-heartbeat.sh --plan-name "{plan-name}" --port "$port" --interval 15
-```
-
-This runs in the background and persists across listen loop iterations.
-Stop it when the plan is approved (pass `--port "$port"` so the offline status hits the right server):
+Each poll iteration is a single, fast bash call — the agent loops at the reasoning level, not inside bash.
+Send a heartbeat, then fetch the plan, then compare against the previous state:
 
 ```bash
-scripts/maestro-heartbeat.sh --plan-name "{plan-name}" --port "$port" --stop
+# Single poll iteration — call this in each round of your reasoning loop.
+# It returns immediately (no while/sleep), so it never hits the bash tool timeout.
+curl -s -X POST "http://localhost:$port/api/agent/{plan-name}/heartbeat" >/dev/null 2>&1
+plan_json=$(curl -s "http://localhost:$port/api/plan/{plan-name}")
+# Echo for the agent to capture; compare against last_seen_msg_ids and previous state.
+echo "$plan_json"
 ```
 
-Done when: the heartbeat process is running (its PID is saved to `.maestro-hb-{plan-name}.pid`).
+The heartbeat keeps the server's agent dot **listening**.
+If the dot goes **offline** due to inactivity (server GC), the next heartbeat automatically restores it to **listening**.
 
-### 3. Run the listen loop
+Done when: `$plan_json` is captured and the agent can compare it against the previous state.
 
-The plan file on disk is rewritten by the server whenever a message is added or the state changes.
-Watch it with `maestro-listen.sh` — it blocks until the file changes, then prints plan JSON and exits:
-
-```bash
-plan_json=$(scripts/maestro-listen.sh --plan-name "{plan-name}" --port "$port" --timeout 7200)
-```
-
-Exit codes: `0` = change detected (plan JSON on stdout), `1` = error, `2` = timeout.
-
-Done when: `maestro-listen.sh` returns plan JSON on stdout.
-
-### 4. Process changes
+### 3. Process changes
 
 Parse the returned JSON with `jq` or inline bash.
 Compare against the previous state (tracked in variables you maintain across iterations).
@@ -277,7 +285,7 @@ Detect:
 
 Done when: every new human message has been read and `last_seen_msg_ids` updated to include it.
 
-### 5. Respond to feedback
+### 4. Respond to feedback
 
 For each new human message:
 
@@ -301,7 +309,7 @@ For each new human message:
 
 Done when: every new human message has an agent reply posted and tracked.
 
-### 6. Handle approval
+### 5. Handle approval
 
 When `plan.state == "approved"`:
 
@@ -312,29 +320,30 @@ When `plan.state == "approved"`:
      -d '{"status": "offline"}'
    ```
 2. Post a final acknowledgment message.
-3. Stop the heartbeat: `scripts/maestro-heartbeat.sh --plan-name "{plan-name}" --port "$port" --stop`.
-4. Exit the listen loop.
-5. Ensure the work ticket directory exists:
+3. Exit the poll loop.
+4. Ensure the work ticket directory exists:
    ```bash
    mkdir -p ~/.config/symphony/work_tickets
    ```
-6. Use the **maestro-export** skill to convert the approved plan JSON to a standardized Markdown work ticket and save it to `~/.config/symphony/work_tickets/{plan-id}.md`.
-7. Report:
+5. Use the **maestro-export** skill to convert the approved plan JSON to a standardized Markdown work ticket and save it to `~/.config/symphony/work_tickets/{plan-id}.md`.
+6. Report:
    > Composer stage complete. Work ticket ready at `~/.config/symphony/work_tickets/{plan-id}.md`.
    > Ready for implementation when you are.
-8. **STOP** — do **not** proceed to implementation. The user invokes implementation explicitly via "pip it" or "implement the plan".
+7. **STOP** — do **not** proceed to implementation. The user invokes implementation explicitly via "pip it" or "implement the plan".
 
-The server also sets the agent **offline** automatically after 1 minute with no heartbeat; setting it explicitly gives the user immediate feedback.
+The server also sets the agent **offline** automatically after 1 minute without a heartbeat; since each poll iteration sends one, the dot stays alive as long as the agent is actively polling.
+Setting it explicitly on approval gives the user immediate feedback.
 
-Done when: the dot is offline, the heartbeat is stopped, the user has been acknowledged, the work ticket has been exported, and the agent has stopped.
+Done when: the dot is offline, the user has been acknowledged, the work ticket has been exported, and the agent has stopped.
 
-### 7. Handle interruption
+### 6. Handle interruption
 
-If the user presses Ctrl-C during the file-watch (the bash call fails or interrupts):
+If the poll call fails or is interrupted:
 
 1. Ask the user whether to resume, discard, or proceed anyway.
 2. If resuming: restart the listen loop.
-3. If discarding: stop the heartbeat, and stop the server only if `started_server=true` (never kill a server you reused).
+3. If discarding: stop the server only if `started_server=true` (never kill a server you reused).
+   The server GC will auto-transition the dot to **offline** after 1 minute.
 
 Done when: the user has chosen a path and you have acted on it.
 
@@ -344,7 +353,7 @@ Done when: the user has chosen a path and you have acted on it.
 1. Discover a running server (reuse it) or start one; write plan, open browser, tell the user.
 2. Initialize last_seen_msg_ids from the plan's current messages.
 3. Loop:
-   a. plan_json=$(scripts/maestro-listen.sh --plan-name {plan-name} --port "$port" --timeout 7200)
+   a. Call the single poll iteration (see §2) — heartbeat + plan fetch in one fast bash call. Set $plan_json on response.
    b. Parse $plan_json.
    c. For each msg in plan.messages where role=="human" and id not in last_seen_msg_ids:
       - Resolve item_ref against plan.modules for context.
@@ -352,9 +361,8 @@ Done when: the user has chosen a path and you have acted on it.
       - Add msg id to last_seen_msg_ids.
       (listening/thinking transitions are automatic.)
    d. If plan.state == "approved":
-      - POST /api/agent/{id}/status {"status":"offline"}.
-      - Stop the heartbeat.
-      - Post final acknowledgment.
+       - POST /api/agent/{id}/status {"status":"offline"}.
+       - Post final acknowledgment.
        - Break → export work ticket via maestro-export → report path → stop (do NOT proceed to implementation).
    e. If interrupted → ask the user what to do.
    f. Goto 3a.
@@ -364,17 +372,15 @@ Done when: the user has chosen a path and you have acted on it.
 
 | Scenario | Handling |
 |---|---|
-| **External .json edits** | The poller detects mtime changes within one interval cycle (default 500ms); `fswatch` is not required |
-| **No `fswatch` available** | `maestro-listen.sh` falls back to `stat` polling (`--poll-fallback-sleep` flag); the server-side poller works regardless |
 | **Server-initiated writes** | The poller skips them via `IsSelfWrite()` mtime matching, avoiding redundant reloads |
 | **Direct .json mtime edits** | `POST /api/admin/reload` forces an immediate rescan |
-| **User edits `.json` file directly** | `maestro-listen.sh` wakes on file change; detect module changes via API diff; acknowledge the edits |
+| **User edits `.json` file directly** | The poll loop detects the change the same way — the server reloads the file and the next `GET /api/plan/{id}` reflects it |
 | **User revokes approval** | `state` goes back to `draft` — stay in the loop; acknowledge the reversal |
 | **Multiple rapid messages** | Process all new messages in batch on one wake; group related responses |
 | **Message deleted** | Messages array shrinks — update your tracking set; no action needed |
-| **Existing server on another port** | `maestro-discover.sh` scans 8080–8089 by default; widen with `--port`/`--max-port` if you run on a custom port |
+| **Existing server on another port** | The port scan covers 8080–8089 by default; widen by adjusting the seq range if you run on a custom port |
 | **Existing server, different plans dir** | The `POST /api/plan/{id}` endpoint writes to the server's own plans dir, so this mismatch never occurs |
-| **Server crash** | Re-run `maestro-discover.sh`; if still unreachable, start a fresh server and re-check |
+| **Server crash** | Re-run the port scan; if still unreachable, start a fresh server and re-check |
 | **User idle / timeout** | After 30 minutes without any change, ask the user if they are still reviewing |
 
 For the Go source layout and build dependencies, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
