@@ -1,6 +1,6 @@
 ---
 name: maestro-export
-description: Convert an approved maestro plan to a standardized Markdown work ticket for implementation. Use when the maestro composer stage is complete and a work ticket needs to be exported to ~/.config/symphony/work_tickets/.
+description: Convert an approved maestro plan to standardized Markdown work tickets (one per stage) for implementation. Use when the maestro composer stage is complete and work tickets need to be exported to ~/.config/symphony/work_tickets/.
 compatibility: opencode
 ---
 
@@ -13,11 +13,13 @@ The output is a self-contained `.md` file that can be copy-pasted into Linear, J
 
 1. Read the approved maestro plan JSON from `$MAESTRO_PLANS_DIR/{plan-id}.json`.
    Refuse to export a draft plan — the plan must have `state: "approved"`.
-2. Convert each module to its markdown section following the rules below.
-3. Ensure `~/.config/symphony/work_tickets/` exists (`mkdir -p ~/.config/symphony/work_tickets`).
-4. Write the markdown to `~/.config/symphony/work_tickets/{plan-id}.md`.
+2. Detect stage groups: a module belongs to stage N when its heading starts with the exact prefix `Stage N:`; all other modules are global, then validate the staged-export rules before writing anything.
+3. Convert modules to markdown sections following the rules below.
+4. Ensure `~/.config/symphony/work_tickets/` exists (`mkdir -p ~/.config/symphony/work_tickets`).
+5. Write one ticket per stage to `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`.
+   Plans with no `Stage N:` headings (single-stage/legacy) export as one ticket at `{plan-id}.md`, unchanged.
 
-Done when: the file exists at `~/.config/symphony/work_tickets/{plan-id}.md` with all implementation-relevant sections and no excluded content (discussion, messages, non-execution modules).
+Done when: one ticket file exists per stage (`{plan-id}-stage-{N}.md`) — or the single `{plan-id}.md` for single-stage plans — with all implementation-relevant sections and no excluded content (discussion, messages, non-execution modules).
 
 ## Output Sections
 
@@ -119,9 +121,51 @@ If the maestro plan URL is known (e.g. `http://localhost:$port/plan/{plan-id}`),
 *Generated from [maestro plan](http://localhost:$port/plan/{plan-id})*
 ```
 
+## Staged Export
+
+Plans decomposed into stages (see the maestro skill's Stage Decomposition section) export as one ticket per stage.
+
+### Detecting stages
+
+- A module belongs to stage N when its heading starts with the exact prefix `Stage N:` (capital `S`, one space, positive integer, and colon).
+- `criteria`, `steps`, and `risks` modules must be stage-prefixed.
+- `decision`, `assumptions`, and `notes` modules must be global-only and must not have a stage prefix.
+- Stage numbers must be contiguous from 1 with no duplicates.
+- If no module has a `Stage N:` prefix, export a single ticket exactly as described above — this is the legacy/single-stage path.
+
+### Stage ticket format
+
+Each stage ticket contains, in exactly this order:
+
+1. A header block:
+   ```
+   # {plan.title} — Stage N: <name>
+
+   **Status**: pending
+
+   **Stage**: N of M of the approved {plan-id} plan
+   ```
+2. The plan summary, when present.
+3. Global **Key Decisions** and **Assumptions** sections.
+4. The stage's **Acceptance Criteria**, **Implementation Steps**, and **Risks** sections.
+5. A **Traceability** footer when the Maestro plan URL is known.
+
+Here, M is the number of stage groups found in the plan, not the highest stage number.
+
+### Violations
+
+Before writing any ticket, flag these violations to the user and refuse to export:
+
+- Unprefixed `criteria`, `steps`, or `risks` modules.
+- Stage-prefixed `decision`, `assumptions`, or `notes` modules.
+- A prefix that is not exactly `Stage N:` (including incorrect capitalization or spacing), non-contiguous stage numbering, or duplicate stage numbers.
+
+File name: `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`, where N is the stage number from the heading prefix.
+
 ## Transformation Rules
 
 - **Flatten lists**: If a module type appears multiple times (e.g. two `criteria` modules), merge all items into a single section.
+  When exporting stages, flatten within each stage's module group, and merge global modules into every stage ticket.
 
 ## Example
 

@@ -191,6 +191,20 @@ The server drives `listening`/`thinking` automatically from message roles; the a
 
 Done when: `GET /api/plan/{id}` returns the plan.
 
+## Stage Decomposition
+
+Every plan decomposes the work into small sequential implementation stages.
+The module-type rule is strict: `criteria`, `steps`, and `risks` are stage-prefixed, while `decision`, `assumptions`, and `notes` are global-only.
+Author one `criteria`/`steps`/`risks` module group per stage, with each module heading prefixed `Stage N: <name>` (N starting at 1), e.g. `{"type": "steps", "heading": "Stage 1: Config parsing", ...}`.
+The prefix must be exactly `Stage N:` — capital `S`, one space, and a positive integer — with stage numbers contiguous from 1 and no duplicates.
+Keep plan-wide content in global `decision`, `assumptions`, and `notes` modules without a stage prefix.
+
+Stage-authoring rules:
+- Each stage must be independently implementable and verifiable.
+- Order stages by dependency — a stage may only depend on earlier stages.
+- Size each stage as a small coherent slice of work.
+- Always decompose; trivial work yields exactly one stage (the degenerate case).
+
 ## Grilling Interview Phase
 
 To author the plan, actively interview the user to stress-test the plan before the final review.
@@ -325,16 +339,16 @@ When `plan.state == "approved"`:
    ```bash
    mkdir -p ~/.config/symphony/work_tickets
    ```
-5. Use the **maestro-export** skill to convert the approved plan JSON to a standardized Markdown work ticket and save it to `~/.config/symphony/work_tickets/{plan-id}.md`.
+5. Use the **maestro-export** skill to convert the approved plan JSON to standardized Markdown work tickets — one per stage — saved to `~/.config/symphony/work_tickets/`.
 6. Report:
-   > Composer stage complete. Work ticket ready at `~/.config/symphony/work_tickets/{plan-id}.md`.
+   > Composer stage complete. Work tickets ready at `~/.config/symphony/work_tickets/` (one per stage).
    > Ready for implementation when you are.
 7. **STOP** — do **not** proceed to implementation. The user invokes implementation explicitly via "pip it" or "implement the plan".
 
 The server also sets the agent **offline** automatically after 1 minute without a heartbeat; since each poll iteration sends one, the dot stays alive as long as the agent is actively polling.
 Setting it explicitly on approval gives the user immediate feedback.
 
-Done when: the dot is offline, the user has been acknowledged, the work ticket has been exported, and the agent has stopped.
+Done when: the dot is offline, the user has been acknowledged, the work tickets have been exported (one per stage, or the single ticket for single-stage plans), and the agent has stopped.
 
 ### 6. Handle interruption
 
@@ -363,7 +377,7 @@ Done when: the user has chosen a path and you have acted on it.
    d. If plan.state == "approved":
        - POST /api/agent/{id}/status {"status":"offline"}.
        - Post final acknowledgment.
-       - Break → export work ticket via maestro-export → report path → stop (do NOT proceed to implementation).
+        - Break → export work tickets via maestro-export → report paths → stop (do NOT proceed to implementation).
    e. If interrupted → ask the user what to do.
    f. Goto 3a.
 ```
