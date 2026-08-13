@@ -25,13 +25,16 @@ The loop runs up to **3 iterations** (implementer → reviewer per iteration). I
 
 Read the canonical work ticket:
 
-- **Primary**: the Markdown work ticket at `~/.config/symphony/work_tickets/{plan-id}.md` (exported by the maestro composer stage).
-- **Fallback**: the maestro plan JSON at `$MAESTRO_PLANS_DIR/{plan-id}.json` (parse its `modules` — especially `criteria` and `steps`).
+- **Primary staged path**: glob `~/.config/symphony/work_tickets/{plan-id}-stage-*.md`, select the lowest N whose header contains `Status: pending`, and implement only that stage.
+- At loop start, change the selected ticket's status from `pending` to `in-progress`.
+- After `publish-it` opens the draft PR, change that ticket's status from `in-progress` to `done`.
+- **Legacy fallback**: use `~/.config/symphony/work_tickets/{plan-id}.md` for single-stage plans.
+- **Plan JSON fallback**: use `$MAESTRO_PLANS_DIR/{plan-id}.json` (parse its `modules` — especially `criteria` and `steps`).
 - For a standalone `pip it` (no composer stage): use the plan content already in context, or the plan file the user points to.
 
-Extract the acceptance criteria and implementation steps; these are what the implementer works to and the reviewer checks against.
+Extract the acceptance criteria and implementation steps for the selected stage; these are what the implementer works to and the reviewer checks against.
 
-Done when: the work ticket's criteria + steps are in hand to pass to subagents.
+Done when: the selected stage ticket's criteria + steps are in hand to pass to subagents, and its status is `in-progress`.
 
 ### 1. Branch check — do NOT branch
 
@@ -131,7 +134,7 @@ Done when: publish-it has opened the draft PR and its URL is reported to the use
 
 ### 4. Stop at the PR
 
-After publish-it opens the draft PR, **stop**. Report the PR URL to the user. Do not write back to Maestro or Linear. (The Maestro approval-time closeout — agent offline, heartbeat stop, final ack — already happened before the loop started.)
+After publish-it opens the draft PR, mark the selected stage ticket `Status: done`, then stop. Report the implemented stage and PR URL to the user. Do not write back to Maestro or Linear. (The Maestro approval-time closeout — agent offline, heartbeat stop, final ack — already happened before the loop started.)
 
 Done when: the draft PR URL is reported and no further writeback is attempted.
 

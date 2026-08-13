@@ -69,7 +69,8 @@ Key skills:
 - `grilling` — interview the user relentlessly about every aspect of the plan (one question at a time), resolving decisions one-by-one; this is the active interview phase within the maestro feedback session
 - `maestro-export` — convert the approved maestro plan JSON to a standardized Markdown work ticket
 
-Output: a Markdown work ticket at `~/.config/symphony/work_tickets/{plan-id}.md`
+Output: one Markdown work ticket per stage at `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`.
+For legacy single-stage plans, output the fallback ticket at `~/.config/symphony/work_tickets/{plan-id}.md`.
 
 ### Performance Stage (Implementation)
 
@@ -82,10 +83,12 @@ Key skills:
 - `plan-implementation-procedure` — orchestrates the implementer↔reviewer subagent loop against the work ticket
 - `publish-it` — creates a branch, commits, pushes, and opens a **draft** PR
 
-Input: a Markdown work ticket from `~/.config/symphony/work_tickets/{plan-id}.md` (fallback: maestro plan JSON)
+Input: the lowest-numbered pending stage ticket from `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`.
+For legacy single-stage plans, use `~/.config/symphony/work_tickets/{plan-id}.md` (fallback: maestro plan JSON).
 
 ### Work Ticket Storage
 
-Work tickets are stored at `~/.config/symphony/work_tickets/{plan-id}.md`.
+Work tickets are stored one per stage at `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`.
+The legacy single-stage fallback is `~/.config/symphony/work_tickets/{plan-id}.md`.
 The config directory is user-global (not per-project), so work tickets survive across projects and sessions.
 Each ticket is a clean, self-contained Markdown file with acceptance criteria, implementation steps, decisions, risks, and assumptions — suitable for copy-paste into Linear, Jira, or GitHub Issues.
