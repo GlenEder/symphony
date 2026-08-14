@@ -9,9 +9,9 @@ a web UI, JSON API, and WebSocket live reload.
 
 ### Major Domains
 1. **Maestro Server** (`maestro/`) — Go web server for structured plans
-2. **TOON Format** (`maestro/lib/toon/`) — Token-efficient data format
+2. **TOON Format** (`skills/toon/`) — Token-efficient data format
 3. **Skills** (`skills/`) — Agent instruction files for workflows
-4. **Setup/Operations** (`setup.sh`, scripts) — Installation and feedback loop
+4. **Setup/Operations** (`setup`, scripts) — Installation and feedback loop
 
 ### Pages to write
 1. **openwiki/quickstart.md** — Entrypoint. Overview, quick start, links to all sections.
@@ -38,11 +38,9 @@ a web UI, JSON API, and WebSocket live reload.
 - /maestro/watcher.go — file watcher
 
 #### toon-format.md
-- /maestro/lib/toon/toon.go — package doc
-- /maestro/lib/toon/ (various files) — implementation
 - /skills/toon/SKILL.md — human-facing docs
 - /maestro/store.go — decodePlan() usage
-- /maestro/plans/test-all-modules.toon — example
+- /maestro/plans/module-showcase.json — example
 
 #### skills.md
 - /skills/*/SKILL.md (all 7 skills)
@@ -50,7 +48,7 @@ a web UI, JSON API, and WebSocket live reload.
 - /AGENTS.md — Plan Display section
 
 #### operations.md
-- /setup.sh — installation
+- /setup — installation
 - /skills/maestro/references/server-lifecycle.md — config and server lifecycle
 - /skills/maestro/scripts/maestro-heartbeat.sh
 - /skills/maestro/scripts/maestro-listen.sh

@@ -31,7 +31,7 @@ The skills and systems in this repo are heavily influenced by outside sources li
 Run the setup script from the repo root:
 
 ```bash
-./setup.sh
+./setup
 ```
 
 This will symlink all skills and config files into `~/.config/maki/` (or `$XDG_CONFIG_HOME/maki/` if set).
@@ -39,7 +39,7 @@ This will symlink all skills and config files into `~/.config/maki/` (or `$XDG_C
 To preview what would be linked without making changes:
 
 ```bash
-./setup.sh --dry-run
+./setup --dry-run
 ```
 
 The setup is safe to re-run — it updates symlinks incrementally and skips any sources that don't exist.
@@ -48,7 +48,7 @@ The setup is safe to re-run — it updates symlinks incrementally and skips any 
 
 ```
 symphony/
-├── setup.sh          # Installation script (symlinks into ~/.config/maki/)
+├── setup             # Installation script (symlinks into ~/.config/maki/)
 ├── AGENTS.md         # Global agent instructions (optional)
 ├── init.lua          # Maki init configuration (optional)
 ├── skills/           # Skill markdown files (subdirectories)
@@ -67,7 +67,7 @@ Each skill is a standalone markdown file with a consistent structure (purpose, i
 
 1. Port the markdown skills to your agent's instruction format (many agents accept markdown prompts directly)
 2. Port shell-based commands as needed
-3. The `setup.sh` script is Maki-specific; for other agents, simply copy the skill files to the equivalent config directory
+3. The `setup` script is Maki-specific; for other agents, simply copy the skill files to the equivalent config directory
 
 ## License
 

@@ -30,7 +30,7 @@ Symphony has two independent layers that work together: the **skill suite** (age
 │  └────┬─────┘  └────┬─────┘  └────────┬───────────┘  │
 │       │              │                  │              │
 │  ┌────▼──────────────▼──────────────────▼───────────┐  │
-│  │              TOON (.toon) files                    │  │
+│  │              JSON (.json) files                    │  │
 │  │              (maestro/plans/ or MAESTRO_PLANS_DIR)│  │
 │  └───────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
@@ -40,7 +40,7 @@ Symphony has two independent layers that work together: the **skill suite** (age
 
 ## Layer 1: Skill Suite
 
-The skill suite is a collection of **SKILL.md** files organized under `skills/`. Each skill teaches an AI agent a specific workflow. The `setup.sh` script symlinks these into the agent's config directory (`~/.config/maki/skills/`).
+The skill suite is a collection of **SKILL.md** files organized under `skills/`. Each skill teaches an AI agent a specific workflow. The `setup` script symlinks these into the agent's config directory (`~/.config/maki/skills/`).
 
 **Key design choices:**
 - Skills are plain Markdown + shell scripts — they are agent-system-agnostic.
@@ -52,7 +52,7 @@ See [Skills](skills/README.md) for details.
 ## Layer 2: Maestro Planning Server
 
 Maestro is a Go web server that:
-1. Loads `.toon` files from a configurable directory into memory
+1. Loads `.json` files from a configurable directory into memory
 2. Serves them via HTTP (HTML UI + JSON API)
 3. Broadcasts live updates via WebSocket when files change
 4. Tracks AI agent status (listening/thinking/offline) via heartbeat polling
@@ -64,20 +64,18 @@ Maestro is a Go web server that:
 | `main.go` | Server entrypoint — wires up PlanStore, AgentState, Hub, watcher, templates, routes |
 | `handler.go` | HTTP route handlers — plan listing, detail pages, JSON API, agent status endpoints |
 | `model.go` | Data types — Plan, Module, Item, Message, FlatPlan, and conversion helpers |
-| `store.go` | PlanStore — loads `.toon` files from disk, persists changes, manages conversation threads |
+| `store.go` | PlanStore — loads `.json` files from disk, persists changes, manages conversation threads |
 | `ws.go` | AgentState (per-plan agent status + GC), WebSocket Hub (subscribe/broadcast) |
 | `watcher.go` | fsnotify-based file watcher for live reload of plan files |
 
-**Dependencies:** `gorilla/websocket`, `fsnotify`, and the local TOON library at `maestro/lib/toon/`.
+**Dependencies:** `gorilla/websocket` — the watcher polls file modtimes rather than using a filesystem-watch library.
 
 ## Data Flow
 
 ### Plan Loading
 
 ```
-Disk (.toon file) ──► TOON decoder ──► JSON marshal ──► Plan struct ──► map[string]*Plan
-                           │                    │
-                    (toon.Unmarshal)      (json.Unmarshal)
+Disk (.json file) ──► json.Unmarshal ──► Plan struct ──► map[string]*Plan
 ```
 
 ### Serving a Plan
@@ -118,14 +116,16 @@ Browser polls ──► GET /api/agent/{id}/status ──► returns JSON {"stat
 
 ## Layer 3: TOON Format
 
-TOON (Token-Oriented Object Notation) is a compact JSON alternative designed for LLM token efficiency. It uses indentation-based structure with CSV-style tabular arrays. Maestro uses the local Go library at `maestro/lib/toon/` to encode and decode plan files.
+TOON (Token-Oriented Object Notation) is a compact JSON alternative designed for LLM token efficiency.
+It uses indentation-based structure with CSV-style tabular arrays.
+It is available as a skill (`toon`) for generating compact structured output; Maestro previously used it for plan storage but now stores plans as JSON.
 
 See [TOON Format](toon/README.md) for the full reference.
 
 ## Key Architectural Decisions
 
-1. **TOON as the on-disk format** — Compact, human-readable, token-efficient. The Go library at `maestro/lib/toon/` provides round-trip encoding (TOON ↔ JSON ↔ Go struct).
+1. **JSON as the on-disk format** — Human-readable and directly unmarshalled into the `Plan` struct with no intermediate encoding step. Maestro previously used TOON; the vendored Go port has been removed.
 2. **File-watcher-based live reload** — Plans update in real-time without server restart (fsnotify). The watcher triggers WebSocket broadcasts to connected clients.
-3. **In-memory + file persistence** — Plans are loaded into memory on startup and persisted back to disk on each mutation. Messages are stored inline in the `.toon` file as part of the JSON round-trip.
+3. **In-memory + file persistence** — Plans are loaded into memory on startup and persisted back to disk on each mutation. Messages are stored inline in the `.json` file.
 4. **Per-plan agent state** — Each plan has its own agent status (listening/thinking/offline). The status is auto-transitioned based on message roles and heartbeat activity, not directly controlled by the agent.
 5. **Positional references** — Messages reference plan items using `moduleIndex:itemIndex` strings instead of UUIDs for simplicity.

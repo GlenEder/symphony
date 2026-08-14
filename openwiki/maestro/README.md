@@ -20,14 +20,14 @@ open http://localhost:8080/plans
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
 | `PORT` | `8080` | HTTP server port |
-| `MAESTRO_PLANS_DIR` | `plans` | Directory containing `.toon` plan files |
+| `MAESTRO_PLANS_DIR` | `plans` | Directory containing `.json` plan files |
 | `MAESTRO_DIR` | Binary directory or CWD | Directory with `templates/` and `static/` assets |
 
-The `MAESTRO_DIR` env var is particularly important when running `maestro` from outside the repo directory — it tells the server where to find HTML templates, CSS, and JavaScript. The `setup.sh` script automatically exports it.
+The `MAESTRO_DIR` env var is particularly important when running `maestro` from outside the repo directory — it tells the server where to find HTML templates, CSS, and JavaScript. The `setup` script automatically exports it.
 
 ## Plan Data Model
 
-A plan is stored as a `.toon` file and loaded into a `Plan` struct.
+A plan is stored as a `.json` file and loaded into a `Plan` struct.
 
 ### Core Types (from `maestro/model.go`)
 
@@ -62,20 +62,19 @@ Plan
 
 The `table` module type renders items in a structured table with user-defined columns:
 
-```toon
-- type: table
-  heading: Encoding Validation
-  columns[3]:
-    - heading: Character
-      key: text
-    - heading: Name
-      key: severity
-    - heading: Unicode
-      key: impact
-  items[9]:
-    - impact: U+2014
-      severity: em dash
-      text: —
+```json
+{
+  "type": "table",
+  "heading": "Encoding Validation",
+  "columns": [
+    {"heading": "Character", "key": "text"},
+    {"heading": "Name", "key": "severity"},
+    {"heading": "Unicode", "key": "impact"}
+  ],
+  "items": [
+    {"text": "—", "severity": "em dash", "impact": "U+2014"}
+  ]
+}
 ```
 
 Columns map item fields (`text`, `severity`, `impact`, etc.) to table headings. See `maestro/templates/components/module-table.html` for rendering.
@@ -196,12 +195,12 @@ The GC goroutine runs every 5 seconds and marks any plan whose last heartbeat is
 
 ## File Watcher
 
-Maestro uses `fsnotify` to watch the plans directory for changes. When a `.toon` file is written or created:
+Maestro polls the plans directory for changes (file modtimes, no filesystem-watch dependency). When a `.json` file is written or created:
 1. The file is reloaded into the PlanStore
 2. The onChange callback fires
 3. The Hub broadcasts the updated plan over WebSocket
 
-The watcher is non-critical — if `fsnotify` fails (e.g., on some filesystems), live updates are disabled but the server continues to work.
+The watcher is non-critical — if polling fails, live updates are disabled but the server continues to work.
 
 ## Templates
 
@@ -224,7 +223,7 @@ Key components:
 | `main.go` | Server bootstrap, template parsing, route registration, dependency wiring |
 | `handler.go` | HTTP handler functions for all routes, template rendering helpers |
 | `model.go` | Plan/Module/Item/Message/FlatPlan types, JSON conversion |
-| `store.go` | PlanStore — disk I/O, TOON encoding/decoding, message management |
+| `store.go` | PlanStore — disk I/O, JSON encoding/decoding, message management |
 | `ws.go` | AgentState, WebSocket Hub, upgrade handler, GC |
 | `watcher.go` | fsnotify-based file watcher |
 | `templates/` | `base.html`, page templates, component partials |
@@ -233,8 +232,7 @@ Key components:
 ## Important Notes for Developers
 
 - **No tests exist yet** — see [Testing](../testing/README.md) for guidance on adding test coverage.
-- **The TOON library** at `maestro/lib/toon/` is a vendored Go port of the TypeScript `@toon-format/toon` library. It has its own `go.mod`. The main `maestro` module replaces the import path to point at this local copy.
-- **Messages are persisted inside the .toon file** via a JSON round-trip (Plan → JSON → TOON → disk). This means `decodePlan` uses two steps: TOON decode to generic map, then JSON marshal/unmarshal to typed struct.
+- **Messages are persisted inside the .json file** directly via `json.Marshal`/`json.Unmarshal` (Plan → JSON → disk). `decodePlan` unmarshals JSON straight into the typed struct.
 - **Positional references** (`item_ref: "moduleIndex:itemIndex"`) are 0-indexed and point into the current plan state. They are not stable across edits that reorder modules or items.
 - **The flat plan** (`FlatPlan` struct) is the serialization format used by both the API and WebSocket. It includes an `agent_status` field not present in the raw Plan struct.
 - **WebSocket connections** are per-plan. The Hub is a `map[planID]map[*websocket.Conn]bool`. Each plan detail page opens its own WebSocket connection.
