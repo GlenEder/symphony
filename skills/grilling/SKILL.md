@@ -1,6 +1,6 @@
 ---
 name: grilling
-description: Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking or mentions grilling.
+description: Grill the user relentlessly about a plan, decision, or idea, resolving decisions one-by-one. Use when the user wants to stress-test their thinking or mentions grilling. NOT for authoring plan JSON (maestro-author), serving or approving a plan (maestro-session), exporting work tickets (maestro-export), implementing a work ticket (plan-implementation-procedure), or routing an ambiguous request (maestro).
 compatibility: opencode
 ---
 

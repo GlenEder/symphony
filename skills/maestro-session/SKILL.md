@@ -1,6 +1,6 @@
 ---
 name: maestro-session
-description: Serve an existing Maestro plan and run its live feedback session through approval. Use when a plan already exists and the user wants review, comments, polling, approval, or export. NOT for authoring or decomposing a new plan.
+description: Serve an existing Maestro plan and run its live feedback session through approval. Use when a plan already exists and the user wants review, comments, polling, or approval. NOT for authoring or decomposing a new plan (maestro-author), exporting work tickets (maestro-export), interviewing decisions (grilling), implementing a work ticket (plan-implementation-procedure), or routing an ambiguous request (maestro).
 compatibility: opencode
 ---
 

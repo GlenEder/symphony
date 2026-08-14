@@ -1,6 +1,6 @@
 ---
 name: maestro-export
-description: Convert an approved maestro plan to standardized Markdown work tickets (one per stage) for implementation. Use when the maestro composer stage is complete and work tickets need to be exported to ~/.config/symphony/work_tickets/.
+description: Convert an approved Maestro plan to standardized Markdown work tickets (one per stage) for implementation. Use when the composer stage is complete and work tickets need to be exported to ~/.config/symphony/work_tickets/. NOT for authoring or decomposing a plan (maestro-author), serving or approving a plan (maestro-session), interviewing decisions (grilling), implementing a work ticket (plan-implementation-procedure), or routing an ambiguous request (maestro).
 compatibility: opencode
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: maestro
-description: Route Maestro planning requests to the focused authoring or feedback-session skill. Use when the request says Maestro without clearly choosing a phase.
+description: Route an ambiguous Maestro planning request to exactly one focused skill and hand off with the plan ID. Use only when the user says "Maestro" without clearly choosing a phase. NOT for authoring or decomposing a plan (maestro-author), serving or approving a plan (maestro-session), exporting work tickets (maestro-export), interviewing decisions (grilling), or implementing a work ticket (plan-implementation-procedure).
 compatibility: opencode
 ---
 

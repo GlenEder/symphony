@@ -1,6 +1,6 @@
 ---
 name: plan-implementation-procedure
-description: Orchestrate an implementer↔reviewer subagent loop on a work ticket (max 3 iterations) until the reviewer is satisfied, then invoke publish-it to open a draft PR. Triggered by 'pip it', 'implement the plan', or 'execute the plan'.
+description: Orchestrate an implementer↔reviewer subagent loop on a work ticket (max 3 iterations) until the reviewer is satisfied, then invoke publish-it to open a draft PR. Use when the user says "pip it", "implement the plan", or "execute the plan". NOT for authoring or decomposing a plan (maestro-author), serving or approving a plan (maestro-session), exporting work tickets (maestro-export), interviewing decisions (grilling), or routing an ambiguous request (maestro).
 compatibility: opencode
 ---
 

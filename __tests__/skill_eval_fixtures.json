@@ -5,7 +5,7 @@
     "expectedSkills": ["maestro-author", "grilling"],
     "selectionRules": ["maestro-author", "grilling"],
     "routingTriggers": {
-      "maestro-author": ["Author a NEW Maestro plan", "stage decomposition"],
+      "maestro-author": ["Author a NEW Maestro plan", "decompose implementation work", "stage decomposition"],
       "grilling": ["Ask the questions one at a time", "recommended"]
     },
     "completionRules": ["draft is valid", "Stage decomposition", "grilling", "maestro-session"]
@@ -26,7 +26,7 @@
     "expectedSkills": ["maestro-export"],
     "selectionRules": ["maestro-export"],
     "routingTriggers": {
-      "maestro-export": ["approved maestro plan", "one ticket per stage", "Done when"]
+      "maestro-export": ["Convert an approved Maestro plan", "one ticket per stage", "Done when"]
     },
     "completionRules": ["approved maestro plan", "one ticket per stage", "Done when"]
   },
@@ -36,7 +36,7 @@
     "expectedSkills": ["grilling"],
     "selectionRules": ["grilling"],
     "routingTriggers": {
-      "grilling": ["Ask the questions one at a time", "recommended", "shared understanding"]
+      "grilling": ["Grill the user relentlessly", "Ask the questions one at a time", "shared understanding"]
     },
     "completionRules": ["one at a time", "recommended", "shared understanding"]
   }
