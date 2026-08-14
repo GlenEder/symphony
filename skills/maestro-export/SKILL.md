@@ -123,7 +123,7 @@ If the maestro plan URL is known (e.g. `http://localhost:$port/plan/{plan-id}`),
 
 ## Staged Export
 
-Plans decomposed into stages (see the maestro skill's Stage Decomposition section) export as one ticket per stage.
+Plans decomposed into stages (see the `maestro-author` skill's Stage Decomposition section) export as one ticket per stage.
 
 ### Detecting stages
 

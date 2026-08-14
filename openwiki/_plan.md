@@ -25,7 +25,9 @@ a web UI, JSON API, and WebSocket live reload.
 #### quickstart.md
 - /README.md — project description, prerequisites, setup
 - /maestro/go.mod — Go deps
-- /skills/maestro/SKILL.md — quick start section
+- /skills/maestro-author/SKILL.md — plan authoring and stage decomposition
+- /skills/maestro-session/SKILL.md — live feedback session and approval
+- /skills/maestro/SKILL.md — routing only
 
 #### architecture.md
 - /maestro/main.go — entrypoint
@@ -49,6 +51,6 @@ a web UI, JSON API, and WebSocket live reload.
 
 #### operations.md
 - /setup.sh — installation
-- /skills/maestro/SKILL.md — config, scripts
+- /skills/maestro/references/server-lifecycle.md — config and server lifecycle
 - /skills/maestro/scripts/maestro-heartbeat.sh
 - /skills/maestro/scripts/maestro-listen.sh

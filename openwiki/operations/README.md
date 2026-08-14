@@ -66,7 +66,7 @@ cd maestro && go run .
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `8080` | HTTP server port |
-| `MAESTRO_PLANS_DIR` | `plans` | Directory with `.toon` files (relative to CWD or absolute) |
+| `MAESTRO_PLANS_DIR` | `plans` | Directory with `.json` files (relative to CWD or absolute) |
 | `MAESTRO_DIR` | Binary dir or CWD | Directory containing `templates/` and `static/` assets |
 
 The server runs until Ctrl+C. It logs connections, file changes, and errors to stdout.
@@ -92,6 +92,9 @@ maestro &
 ```
 
 ### 2. Start the Heartbeat
+
+The `maestro-session` skill owns the reasoning-level heartbeat and polling loop.
+The heartbeat helper is also available for integrations that need a background process.
 
 The agent runs the heartbeat script to indicate it is listening:
 
@@ -122,7 +125,7 @@ scripts/maestro-heartbeat.sh --plan-name <plan-id> --stop
 #### maestro-heartbeat.sh
 
 ```
---plan-name <name>    Plan name (required, matches .toon filename without extension)
+--plan-name <name>    Plan name (required, matches .json filename without extension)
 --maestro-dir <path>  Path to maestro directory (default: MAESTRO_DIR env or .)
 --port <port>         Maestro server port (default: 8080)
 --interval <s>        Seconds between heartbeats (default: 15)
@@ -152,29 +155,26 @@ The script checks if the plan file exists before starting. Exit code 2 means tim
 
 ### Creating a Plan
 
-Create a `.toon` file in the plans directory:
+Create a `.json` file in the plans directory:
 
-```toon
-title: My Plan
-summary: Description of the plan
-state: draft
-
-modules[N]:
-  - heading: Section Name
-    type: <module-type>
-    items[N]{fields}:
-      ...
+```json
+{
+  "title": "My Plan",
+  "summary": "Description of the plan",
+  "state": "draft",
+  "modules": []
+}
 ```
 
 See the [TOON format](../toon/README.md) and the [Maestro data model](../maestro/README.md#plan-data-model) for full syntax.
 
 ### Editing a Plan
 
-Edit the `.toon` file with any text editor. The file watcher detects changes and broadcasts updates over WebSocket to connected browsers.
+Edit the `.json` file with any text editor. The file watcher detects changes and broadcasts updates over WebSocket to connected browsers.
 
 ### Deleting a Plan
 
-Delete the `.toon` file. The server will still serve it from memory until restart. There is no API endpoint for deleting plans — it must be done on disk.
+Delete the `.json` file. The server will still serve it from memory until restart. There is no API endpoint for deleting plans — it must be done on disk.
 
 ## Troubleshooting
 
@@ -188,11 +188,11 @@ Set `MAESTRO_DIR` to the `maestro/` directory: `MAESTRO_DIR=/path/to/maestro mae
 Ensure the Go version supports `http.HandleFunc` with `r.PathValue` (Go 1.22+). The `maestro/go.mod` specifies Go 1.26.4.
 
 **"Plan not found" in the UI**
-Plans are loaded from `MAESTRO_PLANS_DIR` (default `plans/`). Place `.toon` files there. Files are loaded by basename without extension — `plans/demo.toon` becomes plan ID `demo`.
+Plans are loaded from `MAESTRO_PLANS_DIR` (default `plans/`). Place `.json` files there. Files are loaded by basename without extension — `plans/demo.json` becomes plan ID `demo`.
 
 **File watcher errors**
 The server logs `file watcher: ... (live updates disabled)` if `fsnotify` fails (e.g., on some network filesystems). The server continues to work, but plan changes won't auto-reload until the next HTTP request triggers a re-read.
 
 ## Data Directory
 
-Plans are stored as `.toon` files. Maestro creates the plans directory on startup if it doesn't exist. There is no database — all state is in these files. Messages are persisted inside the `.toon` file alongside the plan data through the TOON round-trip encoding.
+Plans are stored as `.json` files. Maestro creates the plans directory on startup if it doesn't exist. There is no database — all state is in these files. Messages are persisted inside the `.json` file alongside the plan data.

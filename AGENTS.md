@@ -42,9 +42,8 @@ First, decide whether you need to ask the user any questions:
 
 - **If you have unresolved decisions or questions** → start a grilling interview via the `grilling` skill. The grilling session creates the plan and resolves decisions one-by-one. After all questions are answered, populate the plan with modules (decisions, steps, risks, criteria, etc.) and proceed to the feedback loop.
 - **If you have no questions** (all decisions are clear, or the user explicitly declined grilling) → create the plan directly:
-  1. **Format it as a Maestro plan document** — use the `maestro` skill's JSON plan format with appropriate module types (e.g., `steps` for sequential work, `risks` for trade-offs, `notes` for design rationale, `criteria` for acceptance criteria, `questions` for open decisions).
-  2. **Serve it via the Maestro web UI** — start the server, write the plan JSON file to `$MAESTRO_PLANS_DIR`, and open the browser URL. If `$MAESTRO_PLANS_DIR` is unset, the server defaults to `plans` relative to the current working directory; the `setup` script exports `$MAESTRO_PLANS_DIR`, so ensure it is set before writing the file.
-  3. **Enter the feedback loop** — enter the listening loop after the initial plan generation so the user can interact with the plan. See the `maestro` skill for the heartbeat cadence, listen endpoint, and exit conditions.
+  1. **Author the plan** — use `maestro-author` for the JSON format, module types, and stage decomposition rules.
+  2. **Serve and review it** — hand the draft to `maestro-session`, which owns server reuse, the browser session, heartbeat polling, and approval.
 
 This does NOT apply to: trivial 1-3 line responses, commit messages, or inline code comments. When in doubt, use Maestro.
 
@@ -65,12 +64,10 @@ Flow: **research → grilling interview → plan population → final review →
 
 Key skills:
 - `research` — gather facts and context for the plan
-- `maestro` — create and serve the structured plan, run the feedback loop, handle approval, and trigger the export
+- `maestro-author` — compose new plan JSON and decompose implementation stages
+- `maestro-session` — serve plans, run feedback, handle approval, and trigger export
 - `grilling` — interview the user relentlessly about every aspect of the plan (one question at a time), resolving decisions one-by-one; this is the active interview phase within the maestro feedback session
 - `maestro-export` — convert the approved maestro plan JSON to a standardized Markdown work ticket
-
-Output: one Markdown work ticket per stage at `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`.
-For legacy single-stage plans, output the fallback ticket at `~/.config/symphony/work_tickets/{plan-id}.md`.
 
 ### Performance Stage (Implementation)
 
@@ -83,12 +80,7 @@ Key skills:
 - `plan-implementation-procedure` — orchestrates the implementer↔reviewer subagent loop against the work ticket
 - `publish-it` — creates a branch, commits, pushes, and opens a **draft** PR
 
-Input: the lowest-numbered pending stage ticket from `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`.
-For legacy single-stage plans, use `~/.config/symphony/work_tickets/{plan-id}.md` (fallback: maestro plan JSON).
-
 ### Work Ticket Storage
 
-Work tickets are stored one per stage at `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`.
-The legacy single-stage fallback is `~/.config/symphony/work_tickets/{plan-id}.md`.
-The config directory is user-global (not per-project), so work tickets survive across projects and sessions.
-Each ticket is a clean, self-contained Markdown file with acceptance criteria, implementation steps, decisions, risks, and assumptions — suitable for copy-paste into Linear, Jira, or GitHub Issues.
+Work tickets are user-global and survive across projects and sessions.
+The export skill defines their stage naming and format.

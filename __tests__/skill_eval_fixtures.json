@@ -2,23 +2,23 @@
   {
     "id": "author-plan",
     "prompt": "Author a new staged Maestro plan for a repository change. Create the JSON plan, decompose it into implementation stages, use grilling to stress-test decisions, and prepare it for review.",
-    "expectedSkills": ["maestro", "grilling"],
-    "selectionRules": ["maestro", "grilling"],
+    "expectedSkills": ["maestro-author", "grilling"],
+    "selectionRules": ["maestro-author", "grilling"],
     "routingTriggers": {
-      "maestro": ["POST the plan JSON", "feedback session"],
+      "maestro-author": ["Author a NEW Maestro plan", "stage decomposition"],
       "grilling": ["Ask the questions one at a time", "recommended"]
     },
-    "completionRules": ["POST the plan JSON", "Stage Decomposition", "grilling", "feedback session"]
+    "completionRules": ["draft is valid", "Stage decomposition", "grilling", "maestro-session"]
   },
   {
     "id": "session-loop",
     "prompt": "The user is reviewing an existing Maestro plan. Start or reuse the server, poll with a heartbeat, respond to new feedback, and stop when the plan is approved.",
-    "expectedSkills": ["maestro"],
-    "selectionRules": ["maestro"],
+    "expectedSkills": ["maestro-session"],
+    "selectionRules": ["maestro-session"],
     "routingTriggers": {
-      "maestro": ["heartbeat", "Poll for changes", "Handle approval"]
+      "maestro-session": ["Serve an existing Maestro plan", "live feedback session", "When state is"]
     },
-    "completionRules": ["Start the session", "Poll for changes", "Respond to feedback", "Handle approval"]
+    "completionRules": ["Discover a running Maestro server", "Poll at the reasoning level", "For every new human message", "approved plan is exported"]
   },
   {
     "id": "export-approved-plan",

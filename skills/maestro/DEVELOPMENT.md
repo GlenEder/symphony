@@ -23,7 +23,7 @@ maestro/
 │   ├── style.css        # Styling (includes response box styles)
 │   └── script.js        # Client-side JS
 └── plans/               # Default plans directory
-    └── demo.toon        # Example plan
+    └── demo.json        # Example plan
 ```
 
 ## Dependencies
