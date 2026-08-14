@@ -1,0 +1,665 @@
+{
+  "schemaVersion": 2,
+  "generatedBy": "__tests__/skill_eval_harness.js",
+  "mode": "static-analysis-proxy",
+  "limitations": [
+    "No headless agent runtime is available: this deterministic proxy scores declared prompt terms and fixture routing triggers against actual skill frontmatter/body content; it cannot model semantic routing.",
+    "Candidate coverage is limited to the relevant planning skill names present in this repository, and selected skills require fixture trigger evidence; it cannot discover undeclared capabilities.",
+    "Token counts use whitespace-separated words rather than a model tokenizer.",
+    "Loaded bodies are the fixture-declared current SKILL.md files, not observed runtime loads."
+  ],
+  "scenarioCount": 4,
+  "completedScenarioCount": 4,
+  "selectionAccuracy": 1,
+  "totalLines": 1299,
+  "totalTokens": 8189,
+  "scenarios": [
+    {
+      "id": "author-plan",
+      "prompt": "Author a new staged Maestro plan for a repository change. Create the JSON plan, decompose it into implementation stages, use grilling to stress-test decisions, and prepare it for review.",
+      "expectedSkills": [
+        "maestro",
+        "grilling"
+      ],
+      "routingTriggerChecks": [
+        {
+          "skill": "maestro",
+          "trigger": "POST the plan JSON",
+          "found": true
+        },
+        {
+          "skill": "maestro",
+          "trigger": "feedback session",
+          "found": true
+        },
+        {
+          "skill": "grilling",
+          "trigger": "Ask the questions one at a time",
+          "found": true
+        },
+        {
+          "skill": "grilling",
+          "trigger": "recommended",
+          "found": true
+        }
+      ],
+      "routingTriggersValid": true,
+      "candidateScores": [
+        {
+          "skill": "grilling",
+          "score": 37,
+          "promptMatches": [
+            "new",
+            "maestro",
+            "plan",
+            "for",
+            "change",
+            "create",
+            "the",
+            "json",
+            "into",
+            "implementation",
+            "use",
+            "grill",
+            "stress",
+            "test",
+            "decisions",
+            "and",
+            "review"
+          ],
+          "triggerMatches": [
+            "Ask the questions one at a time",
+            "recommended"
+          ],
+          "triggerCount": 2
+        },
+        {
+          "skill": "maestro",
+          "score": 40,
+          "promptMatches": [
+            "author",
+            "new",
+            "maestro",
+            "plan",
+            "for",
+            "change",
+            "create",
+            "the",
+            "json",
+            "decompose",
+            "into",
+            "implementation",
+            "stages",
+            "use",
+            "grill",
+            "stress",
+            "test",
+            "decisions",
+            "and",
+            "review"
+          ],
+          "triggerMatches": [
+            "POST the plan JSON",
+            "feedback session"
+          ],
+          "triggerCount": 2
+        },
+        {
+          "skill": "maestro-export",
+          "score": 16,
+          "promptMatches": [
+            "staged",
+            "maestro",
+            "plan",
+            "for",
+            "change",
+            "create",
+            "the",
+            "json",
+            "decompose",
+            "into",
+            "implementation",
+            "stages",
+            "use",
+            "decisions",
+            "and",
+            "review"
+          ],
+          "triggerMatches": [],
+          "triggerCount": 0
+        },
+        {
+          "skill": "plan-implementation-procedure",
+          "score": 13,
+          "promptMatches": [
+            "staged",
+            "maestro",
+            "plan",
+            "for",
+            "change",
+            "create",
+            "the",
+            "json",
+            "implementation",
+            "use",
+            "test",
+            "and",
+            "review"
+          ],
+          "triggerMatches": [],
+          "triggerCount": 0
+        }
+      ],
+      "selectedSkills": [
+        "grilling",
+        "maestro"
+      ],
+      "topCandidates": [
+        "maestro"
+      ],
+      "unexpectedMatches": [],
+      "ambiguous": false,
+      "selectionCorrect": true,
+      "workflowCompleted": true,
+      "completionChecks": [
+        {
+          "rule": "POST the plan JSON",
+          "found": true
+        },
+        {
+          "rule": "Stage Decomposition",
+          "found": true
+        },
+        {
+          "rule": "grilling",
+          "found": true
+        },
+        {
+          "rule": "feedback session",
+          "found": true
+        }
+      ],
+      "loadedSkills": [
+        {
+          "skill": "maestro",
+          "path": "skills/maestro/SKILL.md",
+          "lines": 401,
+          "tokens": 2662
+        },
+        {
+          "skill": "grilling",
+          "path": "skills/grilling/SKILL.md",
+          "lines": 144,
+          "tokens": 927
+        }
+      ],
+      "totalLines": 545,
+      "totalTokens": 3589
+    },
+    {
+      "id": "session-loop",
+      "prompt": "The user is reviewing an existing Maestro plan. Start or reuse the server, poll with a heartbeat, respond to new feedback, and stop when the plan is approved.",
+      "expectedSkills": [
+        "maestro"
+      ],
+      "routingTriggerChecks": [
+        {
+          "skill": "maestro",
+          "trigger": "heartbeat",
+          "found": true
+        },
+        {
+          "skill": "maestro",
+          "trigger": "Poll for changes",
+          "found": true
+        },
+        {
+          "skill": "maestro",
+          "trigger": "Handle approval",
+          "found": true
+        }
+      ],
+      "routingTriggersValid": true,
+      "candidateScores": [
+        {
+          "skill": "grilling",
+          "score": 16,
+          "promptMatches": [
+            "the",
+            "user",
+            "review",
+            "exist",
+            "maestro",
+            "plan",
+            "start",
+            "server",
+            "poll",
+            "with",
+            "heartbeat",
+            "respond",
+            "new",
+            "feedback",
+            "and",
+            "when"
+          ],
+          "triggerMatches": [],
+          "triggerCount": 0
+        },
+        {
+          "skill": "maestro",
+          "score": 49,
+          "promptMatches": [
+            "the",
+            "user",
+            "review",
+            "exist",
+            "maestro",
+            "plan",
+            "start",
+            "reuse",
+            "server",
+            "poll",
+            "with",
+            "heartbeat",
+            "respond",
+            "new",
+            "feedback",
+            "and",
+            "stop",
+            "when",
+            "approved"
+          ],
+          "triggerMatches": [
+            "heartbeat",
+            "Poll for changes",
+            "Handle approval"
+          ],
+          "triggerCount": 3
+        },
+        {
+          "skill": "maestro-export",
+          "score": 12,
+          "promptMatches": [
+            "the",
+            "user",
+            "review",
+            "exist",
+            "maestro",
+            "plan",
+            "start",
+            "server",
+            "with",
+            "and",
+            "when",
+            "approved"
+          ],
+          "triggerMatches": [],
+          "triggerCount": 0
+        },
+        {
+          "skill": "plan-implementation-procedure",
+          "score": 13,
+          "promptMatches": [
+            "the",
+            "user",
+            "review",
+            "exist",
+            "maestro",
+            "plan",
+            "start",
+            "with",
+            "heartbeat",
+            "and",
+            "stop",
+            "when",
+            "approved"
+          ],
+          "triggerMatches": [],
+          "triggerCount": 0
+        }
+      ],
+      "selectedSkills": [
+        "maestro"
+      ],
+      "topCandidates": [
+        "maestro"
+      ],
+      "unexpectedMatches": [],
+      "ambiguous": false,
+      "selectionCorrect": true,
+      "workflowCompleted": true,
+      "completionChecks": [
+        {
+          "rule": "Start the session",
+          "found": true
+        },
+        {
+          "rule": "Poll for changes",
+          "found": true
+        },
+        {
+          "rule": "Respond to feedback",
+          "found": true
+        },
+        {
+          "rule": "Handle approval",
+          "found": true
+        }
+      ],
+      "loadedSkills": [
+        {
+          "skill": "maestro",
+          "path": "skills/maestro/SKILL.md",
+          "lines": 401,
+          "tokens": 2662
+        }
+      ],
+      "totalLines": 401,
+      "totalTokens": 2662
+    },
+    {
+      "id": "export-approved-plan",
+      "prompt": "The Maestro plan is approved. Export it into standardized staged work tickets in ~/.config/symphony/work_tickets/ and then stop without implementing.",
+      "expectedSkills": [
+        "maestro-export"
+      ],
+      "routingTriggerChecks": [
+        {
+          "skill": "maestro-export",
+          "trigger": "approved maestro plan",
+          "found": true
+        },
+        {
+          "skill": "maestro-export",
+          "trigger": "one ticket per stage",
+          "found": true
+        },
+        {
+          "skill": "maestro-export",
+          "trigger": "Done when",
+          "found": true
+        }
+      ],
+      "routingTriggersValid": true,
+      "candidateScores": [
+        {
+          "skill": "grilling",
+          "score": 7,
+          "promptMatches": [
+            "the",
+            "maestro",
+            "plan",
+            "into",
+            "and",
+            "then",
+            "implement"
+          ],
+          "triggerMatches": [],
+          "triggerCount": 0
+        },
+        {
+          "skill": "maestro",
+          "score": 16,
+          "promptMatches": [
+            "the",
+            "maestro",
+            "plan",
+            "approved",
+            "export",
+            "into",
+            "standardized",
+            "work",
+            "tickets",
+            "config",
+            "symphony",
+            "and",
+            "then",
+            "stop",
+            "without",
+            "implement"
+          ],
+          "triggerMatches": [],
+          "triggerCount": 0
+        },
+        {
+          "skill": "maestro-export",
+          "score": 46,
+          "promptMatches": [
+            "the",
+            "maestro",
+            "plan",
+            "approved",
+            "export",
+            "into",
+            "standardized",
+            "staged",
+            "work",
+            "tickets",
+            "config",
+            "symphony",
+            "and",
+            "then",
+            "without",
+            "implement"
+          ],
+          "triggerMatches": [
+            "approved maestro plan",
+            "one ticket per stage",
+            "Done when"
+          ],
+          "triggerCount": 3
+        },
+        {
+          "skill": "plan-implementation-procedure",
+          "score": 13,
+          "promptMatches": [
+            "the",
+            "maestro",
+            "plan",
+            "approved",
+            "staged",
+            "work",
+            "tickets",
+            "config",
+            "symphony",
+            "and",
+            "then",
+            "stop",
+            "implement"
+          ],
+          "triggerMatches": [],
+          "triggerCount": 0
+        }
+      ],
+      "selectedSkills": [
+        "maestro-export"
+      ],
+      "topCandidates": [
+        "maestro-export"
+      ],
+      "unexpectedMatches": [],
+      "ambiguous": false,
+      "selectionCorrect": true,
+      "workflowCompleted": true,
+      "completionChecks": [
+        {
+          "rule": "approved maestro plan",
+          "found": true
+        },
+        {
+          "rule": "one ticket per stage",
+          "found": true
+        },
+        {
+          "rule": "Done when",
+          "found": true
+        }
+      ],
+      "loadedSkills": [
+        {
+          "skill": "maestro-export",
+          "path": "skills/maestro-export/SKILL.md",
+          "lines": 209,
+          "tokens": 1011
+        }
+      ],
+      "totalLines": 209,
+      "totalTokens": 1011
+    },
+    {
+      "id": "grill-decision",
+      "prompt": "Grill me relentlessly about the architecture decision until we reach shared understanding. Ask one question at a time, include a recommended choice, and do not act until I confirm.",
+      "expectedSkills": [
+        "grilling"
+      ],
+      "routingTriggerChecks": [
+        {
+          "skill": "grilling",
+          "trigger": "Ask the questions one at a time",
+          "found": true
+        },
+        {
+          "skill": "grilling",
+          "trigger": "recommended",
+          "found": true
+        },
+        {
+          "skill": "grilling",
+          "trigger": "shared understanding",
+          "found": true
+        }
+      ],
+      "routingTriggersValid": true,
+      "candidateScores": [
+        {
+          "skill": "grilling",
+          "score": 50,
+          "promptMatches": [
+            "grill",
+            "relentlessly",
+            "about",
+            "the",
+            "decision",
+            "until",
+            "reach",
+            "shared",
+            "understand",
+            "ask",
+            "one",
+            "question",
+            "time",
+            "include",
+            "recommended",
+            "choice",
+            "and",
+            "not",
+            "act",
+            "confirm"
+          ],
+          "triggerMatches": [
+            "Ask the questions one at a time",
+            "recommended",
+            "shared understanding"
+          ],
+          "triggerCount": 3
+        },
+        {
+          "skill": "maestro",
+          "score": 17,
+          "promptMatches": [
+            "grill",
+            "about",
+            "the",
+            "decision",
+            "until",
+            "reach",
+            "shared",
+            "understand",
+            "ask",
+            "one",
+            "question",
+            "time",
+            "include",
+            "and",
+            "not",
+            "act",
+            "confirm"
+          ],
+          "triggerMatches": [],
+          "triggerCount": 0
+        },
+        {
+          "skill": "maestro-export",
+          "score": 9,
+          "promptMatches": [
+            "the",
+            "decision",
+            "ask",
+            "one",
+            "time",
+            "include",
+            "and",
+            "not",
+            "act"
+          ],
+          "triggerMatches": [],
+          "triggerCount": 0
+        },
+        {
+          "skill": "plan-implementation-procedure",
+          "score": 12,
+          "promptMatches": [
+            "the",
+            "decision",
+            "until",
+            "reach",
+            "ask",
+            "one",
+            "time",
+            "include",
+            "and",
+            "not",
+            "act",
+            "confirm"
+          ],
+          "triggerMatches": [],
+          "triggerCount": 0
+        }
+      ],
+      "selectedSkills": [
+        "grilling"
+      ],
+      "topCandidates": [
+        "grilling"
+      ],
+      "unexpectedMatches": [],
+      "ambiguous": false,
+      "selectionCorrect": true,
+      "workflowCompleted": true,
+      "completionChecks": [
+        {
+          "rule": "one at a time",
+          "found": true
+        },
+        {
+          "rule": "recommended",
+          "found": true
+        },
+        {
+          "rule": "shared understanding",
+          "found": true
+        }
+      ],
+      "loadedSkills": [
+        {
+          "skill": "grilling",
+          "path": "skills/grilling/SKILL.md",
+          "lines": 144,
+          "tokens": 927
+        }
+      ],
+      "totalLines": 144,
+      "totalTokens": 927
+    }
+  ]
+}

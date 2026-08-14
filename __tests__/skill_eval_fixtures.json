@@ -1,0 +1,43 @@
+[
+  {
+    "id": "author-plan",
+    "prompt": "Author a new staged Maestro plan for a repository change. Create the JSON plan, decompose it into implementation stages, use grilling to stress-test decisions, and prepare it for review.",
+    "expectedSkills": ["maestro", "grilling"],
+    "selectionRules": ["maestro", "grilling"],
+    "routingTriggers": {
+      "maestro": ["POST the plan JSON", "feedback session"],
+      "grilling": ["Ask the questions one at a time", "recommended"]
+    },
+    "completionRules": ["POST the plan JSON", "Stage Decomposition", "grilling", "feedback session"]
+  },
+  {
+    "id": "session-loop",
+    "prompt": "The user is reviewing an existing Maestro plan. Start or reuse the server, poll with a heartbeat, respond to new feedback, and stop when the plan is approved.",
+    "expectedSkills": ["maestro"],
+    "selectionRules": ["maestro"],
+    "routingTriggers": {
+      "maestro": ["heartbeat", "Poll for changes", "Handle approval"]
+    },
+    "completionRules": ["Start the session", "Poll for changes", "Respond to feedback", "Handle approval"]
+  },
+  {
+    "id": "export-approved-plan",
+    "prompt": "The Maestro plan is approved. Export it into standardized staged work tickets in ~/.config/symphony/work_tickets/ and then stop without implementing.",
+    "expectedSkills": ["maestro-export"],
+    "selectionRules": ["maestro-export"],
+    "routingTriggers": {
+      "maestro-export": ["approved maestro plan", "one ticket per stage", "Done when"]
+    },
+    "completionRules": ["approved maestro plan", "one ticket per stage", "Done when"]
+  },
+  {
+    "id": "grill-decision",
+    "prompt": "Grill me relentlessly about the architecture decision until we reach shared understanding. Ask one question at a time, include a recommended choice, and do not act until I confirm.",
+    "expectedSkills": ["grilling"],
+    "selectionRules": ["grilling"],
+    "routingTriggers": {
+      "grilling": ["Ask the questions one at a time", "recommended", "shared understanding"]
+    },
+    "completionRules": ["one at a time", "recommended", "shared understanding"]
+  }
+]
