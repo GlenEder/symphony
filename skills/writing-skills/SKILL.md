@@ -50,6 +50,11 @@ Where the ladder decides _how far down_ a piece sits, **co-location** decides _w
 - **By invocation** — split off a **model-invoked** skill when you have a distinct **leading word** that should trigger it on its own, or another skill must reach it. You pay **context load** for the new always-loaded **description**, so that independent reach has to be worth it.
 - **By sequence** — split a run of **steps** when the steps still ahead (a step's **post-completion steps**) tempt the agent to rush the one in front of it (**premature completion**). Keeping them out of view encourages the agent to do more **legwork** on the current task.
 
+A monolithic skill that has grown several distinct-trigger **branches** — each a phase a user could invoke on its own — is **sprawl** waiting on a split.
+Decompose it by **branch**: each phase with its own **leading word** becomes a sibling **model-invoked** skill, paying **context load** for the independent reach.
+Material more than one phase needs is not a third skill — push it behind a **context pointer** as **progressive disclosure** into a bundled **reference** file under the shared skill, so it stays a **single source of truth** without a new always-loaded **description**.
+Then write each sibling's **description** with an exclusive trigger and a NOT-boundary naming its siblings, so the confusable phases do not steal each other's invocations.
+
 ## Pruning
 
 Keep each meaning in a **single source of truth**: one authoritative place, so changing the behaviour is a one-place edit.

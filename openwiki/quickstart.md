@@ -4,7 +4,7 @@ Symphony is a collection of tools and agent instructions for AI coding agents. I
 
 1. **Skills** — Markdown instruction files (SKILL.md) that teach coding agents specialized workflows like GitHub operations, planning, project management, and Maestro interaction.
 2. **Maestro** — A lightweight Go web server that serves structured planning documents with a web UI, JSON API, and WebSocket live updates.
-3. **TOON** — A compact, token-efficient data format (Token-Oriented Object Notation) used by Maestro for plan files.
+3. **TOON** — A compact, token-efficient data format (Token-Oriented Object Notation) available as an agent skill for compact structured output.
 
 The project is designed for [Maki](https://github.com/gleneder/maki) but ports easily to other agent systems (Claude Code, Cline, Aider).
 
@@ -50,8 +50,7 @@ See [Maestro](maestro/README.md) for the full API, data model, and workflow.
 | `setup_cmds/` | Modular setup subcommand scripts |
 | `AGENTS.md` | Global agent baseline instructions (alwaysApply) |
 | `maestro/` | Go planning server source, templates, static assets |
-| `maestro/lib/toon/` | Go library for TOON encode/decode |
-| `maestro/plans/` | Plan files (`.toon` format) |
+| `maestro/plans/` | Plan files (`.json` format) |
 | `skills/` | Agent skill definitions (one subdirectory per skill) |
 | `skills/maestro/` | Maestro skill — teaches agents to use the planning server |
 | `skills/toon/` | TOON format skill — teaches agents to encode/decode TOON |
@@ -61,7 +60,7 @@ See [Maestro](maestro/README.md) for the full API, data model, and workflow.
 - [Architecture](architecture/README.md) — system design, data flow, component relationships
 - [Maestro](maestro/README.md) — planning server, API, data model, agent status, WebSocket
 - [Skills](skills/README.md) — agent skill definitions, structure, and how to use them
-- [TOON Format](toon/README.md) — token-efficient data format used by Maestro
+- [TOON Format](toon/README.md) — token-efficient data format for compact structured output
 - [Operations](operations/README.md) — setup, running, environment variables, scripts
 
 ## Quick Links to Key Files
@@ -84,4 +83,4 @@ See [Maestro](maestro/README.md) for the full API, data model, and workflow.
 - Read [Architecture](architecture/README.md) to understand how the pieces fit together
 - Read [Maestro](maestro/README.md) to learn the API and plan workflows
 - Read [Skills](skills/README.md) to understand how agent skills work
-- Read [TOON Format](toon/README.md) to understand plan file syntax
+- Read [TOON Format](toon/README.md) to understand the TOON data format

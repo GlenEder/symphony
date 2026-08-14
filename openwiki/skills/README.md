@@ -27,21 +27,24 @@ compatibility: opencode  # or other agent systems
 
 | Skill | Directory | Purpose |
 |-------|-----------|---------|
-| **maestro** | `skills/maestro/` | Thin router for Maestro authoring and feedback skills |
+| **maestro** | `skills/maestro/` | Thin router for ambiguous Maestro requests |
 | **maestro-author** | `skills/maestro-author/` | Compose new plan JSON and decompose implementation stages |
 | **maestro-session** | `skills/maestro-session/` | Serve plans, run live feedback, approve, and hand off export |
+| **maestro-export** | `skills/maestro-export/` | Convert an approved plan to per-stage Markdown work tickets |
+| **grilling** | `skills/grilling/` | Interview the user one question at a time to resolve plan decisions |
+| **research** | `skills/research/` | Delegate reading legwork to a background subagent against primary sources |
+| **plan-implementation-procedure** | `skills/plan-implementation-procedure/` | Orchestrate the implementer↔reviewer loop on a work ticket to a draft PR |
+| **publish-it** | `skills/publish-it/` | Publish uncommitted working-tree changes to a draft PR |
 | **toon** | `skills/toon/` | Token-Oriented Object Notation — encode, decode, and validate TOON data |
 | **gh** | `skills/gh/` | GitHub CLI operations — PRs, issues, releases, Actions |
 | **maki-agent** | `skills/maki-agent/` | Maki agent configuration and usage reference |
-| **plan-implementation-procedure** | `skills/plan-implementation-procedure/` | Full plan-to-PR workflow |
-| **pm** | `skills/pm/` | Project management ticket generation |
-| **publish-it** | `skills/publish-it/` | Quick one-shot PR publishing |
+| **kaneo-pm** | `skills/kaneo-pm/` | Manage Kaneo projects and tasks via its REST API |
 | **create-bash-script** | `skills/create-bash-script/` | Bash script scaffolding |
-| **research** | `skills/research/` | Delegate reading legwork to a background subagent against primary sources |
+| **writing-great-skills** | `skills/writing-skills/` | Authoring reference for writing predictable skills |
 
 ## Installation
 
-The `setup.sh` script at the repo root symlinks each skill directory into the agent's config directory:
+The `setup` script at the repo root symlinks each skill directory into the agent's config directory:
 
 ```
 ~/.config/maki/skills/<name>/ → .../symphony/skills/<name>/
@@ -92,7 +95,8 @@ See the [TOON Format section](../toon/README.md) for a format overview.
 
 ## Other Skills
 
-The remaining skills (`gh`, `maki-agent`, `plan-implementation-procedure`, `pm`, `publish-it`, `create-bash-script`) are standard Markdown instruction files for agent workflows. They do not have associated server-side code or scripts beyond what they describe.
+The remaining skills (`research`, `grilling`, `maestro-export`, `plan-implementation-procedure`, `publish-it`, `gh`, `maki-agent`, `kaneo-pm`, `create-bash-script`, `writing-great-skills`) are standard Markdown instruction files for agent workflows.
+They have no server-side code of their own.
 
 ## Global Agent Instructions
 
@@ -108,5 +112,5 @@ The `AGENTS.md` file at the repo root (alwaysApply: true) provides baseline inst
 
 - Skills are loaded by the Maki agent at startup when symlinked to `~/.config/maki/skills/`
 - Other agent systems may require different paths or naming conventions
-- The `setup.sh` script only handles symlinks — it does not validate skills or check for conflicts
+- The `setup` script only handles symlinks — it does not validate skills or check for conflicts
 - If a skill references a script, the agent must know the path to that script (the skill file handles this with relative paths)

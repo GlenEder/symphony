@@ -60,27 +60,11 @@ The composer stage is for creating, stress-testing, and approving plans.
 It **ends** when the plan is approved and a work ticket is exported.
 It does **not** proceed to implementation.
 
-Flow: **research → grilling interview → plan population → final review → approval → export work ticket → stop**
-
-Key skills:
-- `research` — gather facts and context for the plan
-- `maestro-author` — compose new plan JSON and decompose implementation stages
-- `maestro-session` — serve plans, run feedback, handle approval, and trigger export
-- `grilling` — interview the user relentlessly about every aspect of the plan (one question at a time), resolving decisions one-by-one; this is the active interview phase within the maestro feedback session
-- `maestro-export` — convert the approved maestro plan JSON to a standardized Markdown work ticket
+Flow: **research → grilling → maestro-author (plan) → maestro-session (review → approval) → maestro-export (work ticket) → stop**
 
 ### Performance Stage (Implementation)
 
 The performance stage is invoked **explicitly** by the user via "pip it" / "implement the plan" / "execute the plan".
 It reads the work ticket and enters an autonomous implementer↔reviewer loop.
 
-Flow: **read work ticket → implementer↔reviewer loop (max 3 iterations) → publish-it draft PR → stop**
-
-Key skills:
-- `plan-implementation-procedure` — orchestrates the implementer↔reviewer subagent loop against the work ticket
-- `publish-it` — creates a branch, commits, pushes, and opens a **draft** PR
-
-### Work Ticket Storage
-
-Work tickets are user-global and survive across projects and sessions.
-The export skill defines their stage naming and format.
+Flow: **read work ticket → plan-implementation-procedure (implementer↔reviewer loop, max 3) → publish-it (draft PR) → stop**
