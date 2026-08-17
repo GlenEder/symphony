@@ -2,26 +2,27 @@ package main
 
 import (
 	"fmt"
+	"github.com/gleneder/symphony/internal/config"
+	"github.com/gleneder/symphony/internal/handler"
+	"github.com/gleneder/symphony/internal/model"
+	"github.com/gleneder/symphony/internal/store"
+	"github.com/gleneder/symphony/internal/watcher"
+	ws "github.com/gleneder/symphony/internal/websocket"
+	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-
-	"github.com/gleneder/symphony/internal/config"
-	"github.com/gorilla/websocket"
+	"strings"
+	"time"
 )
-
-var websocketUpgrader = websocket.Upgrader{}
 
 func newRouter() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
-	})
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = fmt.Fprintln(w, "<h1>Maestro</h1>")
 	})
 	return mux
 }
@@ -31,24 +32,52 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: maestro serve /path/to/codebase")
 		os.Exit(2)
 	}
-
-	codebasePath := "."
 	if len(os.Args) > 2 {
-		codebasePath = os.Args[2]
+		_ = os.Setenv("CODEBASE_PATH", os.Args[2])
 	}
-	if abs, err := filepath.Abs(codebasePath); err == nil {
-		_ = os.Setenv("CODEBASE_PATH", abs)
+	cfg, e := config.Load("")
+	if e != nil {
+		log.Fatal(e)
 	}
+	base := "."
+	tmpl, e := parseTemplates(base)
+	if e != nil {
+		log.Fatal(e)
+	}
+	hub := ws.NewHub()
+	state := ws.NewAgentState()
+	var s *store.PlanStore
+	s = store.New(cfg.MaestroPlansDir, func(id string) {
+		if p := s.Get(id); p != nil {
+			hub.Broadcast(id, model.ToFlatPlan(p, state.GetStatus(id)).JSON())
+		}
+	})
+	if e = s.LoadAll(); e != nil {
+		log.Fatal(e)
+	}
+	poll := watcher.Start(s, cfg.MaestroPlansDir, 500*time.Millisecond)
+	defer poll.Close()
+	mux := http.NewServeMux()
+	handler.Register(mux, tmpl, s, hub, state, base)
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	mux.Handle("/style.css", http.FileServer(http.Dir("static")))
+	mux.Handle("/script.js", http.FileServer(http.Dir("static")))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", cfg.Port), mux))
+}
 
-	cfg, err := config.Load("")
-	if err != nil {
-		log.Fatalf("load config: %v", err)
+func parseTemplates(base string) (*template.Template, error) {
+	t := template.New("").Funcs(template.FuncMap{"timeago": handler.Timeago, "lower": strings.ToLower, "add": func(a, b int) int { return a + b }})
+	if _, e := t.ParseFiles(filepath.Join(base, "templates/base.html")); e != nil {
+		return nil, e
 	}
-	if err := os.MkdirAll(cfg.MaestroPlansDir, 0755); err != nil {
-		log.Fatalf("create plans directory: %v", err)
-	}
-
-	addr := fmt.Sprintf(":%d", cfg.Port)
-	log.Printf("Maestro serving %s on http://localhost%s", cfg.CodebasePath, addr)
-	log.Fatal(http.ListenAndServe(addr, newRouter()))
+	e := filepath.WalkDir(filepath.Join(base, "templates/components"), func(path string, d fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		if !d.IsDir() && filepath.Ext(path) == ".html" {
+			_, e = t.ParseFiles(path)
+		}
+		return e
+	})
+	return t, e
 }

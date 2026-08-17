@@ -1,0 +1,26 @@
+{{define "plan-module"}}
+<section class="module module-{{.Type}}" data-module-type="{{.Type}}">
+<h2 class="module-heading">{{.Heading}}</h2>
+<div class="module-body">
+{{if eq .Type "criteria"}}{{template "module-criteria" .Items}}
+{{else if eq .Type "steps"}}{{template "module-steps" .Items}}
+{{else if eq .Type "risks"}}{{template "module-risks" .Items}}
+{{else if eq .Type "decision"}}{{template "module-decisions" .Items}}
+{{else if eq .Type "assumptions"}}{{template "module-assumptions" .Items}}
+{{else if eq .Type "changes"}}{{template "module-changes" .Items}}
+{{else if eq .Type "questions"}}{{template "module-questions" .Items}}
+{{else if eq .Type "table"}}{{template "module-table" .}}
+{{else if eq .Type "notes"}}{{template "module-notes" .Items}}
+{{else}}{{template "module-generic" .Items}}{{end}}
+</div></section>
+{{end}}
+{{define "module-risks"}}<div class="risk-list">{{range .}}<article class="risk-card"><strong>{{.Text}}</strong>{{if .Severity}} <span>{{.Severity}}</span>{{end}}{{if .Impact}}<p><b>Impact:</b> {{.Impact}}</p>{{end}}{{if .Mitigation}}<p><b>Mitigation:</b> {{.Mitigation}}</p>{{end}}{{if .Owner}}<p><b>Owner:</b> {{.Owner}}</p>{{end}}</article>{{end}}</div>{{end}}
+{{define "module-decisions"}}<div class="decision-list">{{range .}}<article class="decision-card"><strong>{{.Text}}</strong>{{if .Options}}<p><b>Alternatives:</b> {{.Options}}</p>{{end}}{{if .Rationale}}<p><b>Rationale:</b> {{.Rationale}}</p>{{end}}{{end}}</div>{{end}}
+{{define "module-questions"}}<ul class="item-list">{{range .}}<li>{{.Text}}{{if .Answered}} — {{.Answer}}{{end}}</li>{{end}}</ul>{{end}}
+{{define "module-table"}}<table><thead><tr>{{range .Columns}}<th>{{.Heading}}</th>{{end}}</tr></thead><tbody>{{range .Items}}{{$item := .}}<tr>{{range $.Columns}}<td>{{if eq .Key "text"}}{{$item.Text}}{{else if eq .Key "severity"}}{{$item.Severity}}{{else if eq .Key "impact"}}{{$item.Impact}}{{else if eq .Key "mitigation"}}{{$item.Mitigation}}{{else if eq .Key "status"}}{{$item.Status}}{{else if eq .Key "owner"}}{{$item.Owner}}{{else if eq .Key "answer"}}{{$item.Answer}}{{end}}</td>{{end}}</tr>{{end}}</tbody></table>{{end}}
+{{define "module-generic"}}<ul>{{range .}}<li>{{.Text}}{{if .Status}} — {{.Status}}{{end}}{{if .Owner}} — {{.Owner}}{{end}}</li>{{end}}</ul>{{end}}
+{{define "module-criteria"}}<ul class="item-list criteria-list">{{range $i, $item := .}}<li class="criteria-item" data-item-idx="{{$i}}"><label class="criteria-label"><input type="checkbox" class="criteria-checkbox" disabled{{if $item.Answered}} checked{{end}}><span class="criteria-text">{{$item.Text}}</span></label></li>{{end}}</ul>{{end}}
+{{define "module-steps"}}<ol class="item-list steps-list">{{range $i, $item := .}}<li class="step-item" data-item-idx="{{$i}}"><div class="step-content"><span class="step-text">{{$item.Text}}</span>{{if $item.Owner}}<span class="step-owner">{{$item.Owner}}</span>{{end}}</div>{{if $item.Status}}<span class="badge badge-{{$item.Status}}">{{$item.Status}}</span>{{end}}</li>{{end}}</ol>{{end}}
+{{define "module-assumptions"}}<ul class="item-list assumptions-list">{{range $i, $item := .}}<li class="assumption-item" data-item-idx="{{$i}}">{{$item.Text}}</li>{{end}}</ul>{{end}}
+{{define "module-changes"}}<ul class="item-list changes-list">{{range $i, $item := .}}<li class="change-item" data-item-idx="{{$i}}"><code class="change-file">{{$item.Text}}</code>{{if $item.ChangeType}}<span class="badge badge-type">{{$item.ChangeType}}</span>{{end}}</li>{{end}}</ul>{{end}}
+{{define "module-notes"}}<div class="notes-block">{{range $i, $item := .}}<p class="note-item" data-item-idx="{{$i}}">{{$item.Text}}</p>{{end}}</div>{{end}}
