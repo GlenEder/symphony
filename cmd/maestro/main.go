@@ -44,7 +44,7 @@ func main() {
 	if e != nil {
 		log.Fatal(e)
 	}
-	hub := ws.NewHub()
+	hub := ws.NewHub(fmt.Sprintf("http://localhost:%d", cfg.Port))
 	state := ws.NewAgentState()
 	var s *store.PlanStore
 	s = store.New(cfg.MaestroPlansDir, func(id string) {

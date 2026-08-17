@@ -68,11 +68,18 @@ func (x *conn) write(b []byte) error {
 func (x *conn) close() { x.c.Close() }
 
 type Hub struct {
-	mu      sync.RWMutex
-	clients map[string]map[*conn]bool
+	mu             sync.RWMutex
+	clients        map[string]map[*conn]bool
+	expectedOrigin string
 }
 
-func NewHub() *Hub { return &Hub{clients: map[string]map[*conn]bool{}} }
+func NewHub(expectedOrigin ...string) *Hub {
+	origin := "http://localhost:8080"
+	if len(expectedOrigin) > 0 && expectedOrigin[0] != "" {
+		origin = expectedOrigin[0]
+	}
+	return &Hub{clients: map[string]map[*conn]bool{}, expectedOrigin: origin}
+}
 func (h *Hub) Broadcast(id string, b []byte) {
 	h.mu.RLock()
 	cs := make([]*conn, 0, len(h.clients[id]))
@@ -102,21 +109,27 @@ func (h *Hub) Unsubscribe(id string, c *conn) {
 	delete(h.clients[id], c)
 }
 
-var upgrader = gws.Upgrader{CheckOrigin: func(r *http.Request) bool {
+func originAllowed(r *http.Request, expectedOrigin string) bool {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		return false
 	}
-	u, err := url.Parse(origin)
-	if err != nil || u.Scheme != "http" && u.Scheme != "https" {
+	expected, err := url.Parse(expectedOrigin)
+	if err != nil {
 		return false
 	}
-	originHost := u.Hostname()
-	if originHost != "localhost" && originHost != "127.0.0.1" && originHost != "::1" {
+	actual, err := url.Parse(origin)
+	if err != nil || actual.Scheme != expected.Scheme || actual.Host != expected.Host {
 		return false
 	}
-	return u.Host == r.Host
-}}
+	return actual.User == nil && actual.Path == "" && actual.RawQuery == "" && actual.Fragment == ""
+}
+
+func newUpgrader(expectedOrigin string) gws.Upgrader {
+	return gws.Upgrader{CheckOrigin: func(r *http.Request) bool {
+		return originAllowed(r, expectedOrigin)
+	}}
+}
 
 func (h *Hub) Handler(s *store.PlanStore, a *AgentState) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -125,6 +138,7 @@ func (h *Hub) Handler(s *store.PlanStore, a *AgentState) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
+		upgrader := newUpgrader(h.expectedOrigin)
 		c, e := upgrader.Upgrade(w, r, nil)
 		if e != nil {
 			return

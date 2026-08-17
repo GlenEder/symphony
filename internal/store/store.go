@@ -341,8 +341,13 @@ func (s *PlanStore) Remove(id string) {
 	if validateID(id) != nil {
 		return
 	}
+	// Coordinate watcher removals with all persistent mutations. This prevents
+	// a stale reload that already observed the file from racing a delete.
+	s.persistMu.Lock()
+	defer s.persistMu.Unlock()
 	s.mu.Lock()
 	delete(s.plans, id)
+	delete(s.lastWrite, id)
 	s.mu.Unlock()
 }
 func (s *PlanStore) IsSelfWrite(name string, t time.Time) bool {
@@ -351,4 +356,10 @@ func (s *PlanStore) IsSelfWrite(name string, t time.Time) bool {
 	x, ok := s.lastWrite[strings.TrimSuffix(name, ".json")]
 	return ok && x.Equal(t)
 }
-func (s *PlanStore) Reload(path string) error { return s.load(path) }
+func (s *PlanStore) Reload(path string) error {
+	// Hold the persistence lock across the disk read and in-memory replacement
+	// so Reload cannot publish a stale snapshot after DeletePlan completes.
+	s.persistMu.Lock()
+	defer s.persistMu.Unlock()
+	return s.load(path)
+}
