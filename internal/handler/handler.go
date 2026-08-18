@@ -10,7 +10,9 @@ import (
 	ws "github.com/gleneder/symphony/internal/websocket"
 	"github.com/gorilla/websocket"
 	"html/template"
+	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -37,8 +39,22 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(v)
 	}
+	decodeJSON := func(w http.ResponseWriter, r *http.Request, dst any, limit int64) error {
+		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(dst); err != nil {
+			return err
+		}
+		if err := dec.Decode(&struct{}{}); err != io.EOF {
+			if err == nil {
+				return fmt.Errorf("trailing data")
+			}
+			return err
+		}
+		return nil
+	}
 
-	m.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+	m.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		if conversations != nil {
 			render(w, t, filepath.Join(base, "templates/welcome.html"), map[string]any{"Year": time.Now().Year()})
 			return
@@ -50,7 +66,7 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 			var b struct {
 				Prompt string `json:"prompt"`
 			}
-			if json.NewDecoder(r.Body).Decode(&b) != nil {
+			if decodeJSON(w, r, &b, 5000) != nil {
 				http.Error(w, "invalid request", 400)
 				return
 			}
@@ -65,13 +81,37 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 			var b struct {
 				Answer string `json:"answer"`
 			}
-			dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 5000))
-			dec.DisallowUnknownFields()
-			if dec.Decode(&b) != nil {
+			if decodeJSON(w, r, &b, 5000) != nil {
 				http.Error(w, "invalid request", http.StatusBadRequest)
 				return
 			}
 			if err := conversations.Answer(r.PathValue("id"), b.Answer); err != nil {
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
+			jsonOut(w, conversations.Session(r.PathValue("id")))
+		})
+		m.HandleFunc("POST /api/session/{id}/feedback", func(w http.ResponseWriter, r *http.Request) {
+			var b struct {
+				Text    string `json:"text"`
+				ItemRef string `json:"item_ref"`
+			}
+			if decodeJSON(w, r, &b, 5000) != nil {
+				http.Error(w, "invalid request", 400)
+				return
+			}
+			if err := conversations.Feedback(r.PathValue("id"), b.ItemRef, b.Text); err != nil {
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
+			jsonOut(w, conversations.Session(r.PathValue("id")))
+		})
+		m.HandleFunc("POST /api/session/{id}/approve", func(w http.ResponseWriter, r *http.Request) {
+			if err := decodeJSON(w, r, &struct{}{}, 1024); err != nil && err != io.EOF {
+				http.Error(w, "invalid request", http.StatusBadRequest)
+				return
+			}
+			if err := conversations.Approve(r.PathValue("id")); err != nil {
 				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			}
@@ -91,6 +131,10 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 			x := conversations.Session(id)
 			if x == nil {
 				http.NotFound(w, r)
+				return
+			}
+			if x.State == conversation.Reviewing {
+				http.Redirect(w, r, "/plan/"+url.PathEscape(id), http.StatusSeeOther)
 				return
 			}
 			jsonOut(w, x)
@@ -138,8 +182,12 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 	})
 	m.HandleFunc("GET /api/plans", func(w http.ResponseWriter, r *http.Request) { jsonOut(w, s.List()) })
 	m.HandleFunc("POST /api/plans", func(w http.ResponseWriter, r *http.Request) {
-		var b struct{ ID, Title, Summary string }
-		if json.NewDecoder(r.Body).Decode(&b) != nil || b.ID == "" || b.Title == "" {
+		var b struct {
+			ID      string `json:"id"`
+			Title   string `json:"title"`
+			Summary string `json:"summary"`
+		}
+		if decodeJSON(w, r, &b, 5000) != nil || b.ID == "" || b.Title == "" {
 			http.Error(w, "id and title are required", 400)
 			return
 		}
@@ -179,10 +227,12 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 		}
 		if r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "messages" {
 			var b struct {
-				Role, Text, ItemRef string
-				Prompt              *model.Prompt
+				Role    string        `json:"role"`
+				Text    string        `json:"text"`
+				ItemRef string        `json:"item_ref"`
+				Prompt  *model.Prompt `json:"prompt"`
 			}
-			if json.NewDecoder(r.Body).Decode(&b) != nil || b.Text == "" {
+			if decodeJSON(w, r, &b, 5000) != nil || b.Text == "" {
 				http.Error(w, "invalid message", 400)
 				return
 			}
@@ -200,8 +250,10 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 			return
 		}
 		if r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "state" {
-			var b struct{ State string }
-			if json.NewDecoder(r.Body).Decode(&b) != nil || s.SetState(id, b.State) != nil {
+			var b struct {
+				State string `json:"state"`
+			}
+			if decodeJSON(w, r, &b, 5000) != nil || s.SetState(id, b.State) != nil {
 				http.Error(w, "invalid state", 400)
 				return
 			}
@@ -210,7 +262,7 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 		}
 		if r.Method == http.MethodPost || r.Method == http.MethodPut {
 			var p model.Plan
-			if json.NewDecoder(r.Body).Decode(&p) != nil || s.Upsert(id, &p) != nil {
+			if decodeJSON(w, r, &p, 50000) != nil || s.Upsert(id, &p) != nil {
 				http.Error(w, "invalid plan", 400)
 				return
 			}
@@ -219,7 +271,7 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 		}
 		if r.Method == http.MethodPatch {
 			var p model.Plan
-			if json.NewDecoder(r.Body).Decode(&p) != nil || s.Patch(id, &p) != nil {
+			if decodeJSON(w, r, &p, 50000) != nil || s.Patch(id, &p) != nil {
 				http.Error(w, "invalid patch", 400)
 				return
 			}
@@ -250,14 +302,18 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 		jsonOut(w, map[string]string{"status": a.GetStatus(r.PathValue("id"))})
 	})
 	m.HandleFunc("POST /api/agent/{id}/status", func(w http.ResponseWriter, r *http.Request) {
-		var b struct{ Status string }
-		_ = json.NewDecoder(r.Body).Decode(&b)
+		var b struct {
+			Status string `json:"status"`
+		}
+		if decodeJSON(w, r, &b, 5000) != nil {
+			http.Error(w, "invalid status", http.StatusBadRequest)
+			return
+		}
 		if b.Status == ws.StatusOffline {
 			a.SetOffline(r.PathValue("id"))
 		}
 		jsonOut(w, map[string]string{"status": "ok"})
 	})
-	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/plans", 302) })
 }
 func websocketUpgrader(expectedOrigin string) websocket.Upgrader {
 	return websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return r.Header.Get("Origin") == expectedOrigin }}

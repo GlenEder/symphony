@@ -28,6 +28,8 @@ type SessionState struct {
 	QuestionCount  int       `json:"question_count"`
 	QuestionKeys   []string  `json:"question_keys,omitempty"`
 	TotalQuestions int       `json:"total_questions,omitempty"`
+	ExportStatus   string    `json:"export_status,omitempty"`
+	ExportError    string    `json:"export_error,omitempty"`
 }
 type Prompt struct {
 	QuestionKey    string   `json:"question_key"`

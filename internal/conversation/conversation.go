@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -54,6 +56,16 @@ type Event struct {
 type LLM interface {
 	Chat(context.Context, []llm.Message) (llm.Response, error)
 }
+
+// Exporter is the Stage 7 boundary. Implementations may enqueue or persist the approved plan.
+type Exporter interface {
+	Export(context.Context, *model.Plan) error
+}
+
+type ExporterFunc func(context.Context, *model.Plan) error
+
+func (f ExporterFunc) Export(ctx context.Context, p *model.Plan) error { return f(ctx, p) }
+
 type Researcher interface {
 	Summary(string, codebase.SummaryOptions) (string, error)
 }
@@ -70,7 +82,10 @@ type Session struct {
 	QuestionCount  int           `json:"question_count"`
 	QuestionKeys   []string      `json:"question_keys,omitempty"`
 	TotalQuestions int           `json:"total_questions,omitempty"`
+	ExportStatus   string        `json:"export_status,omitempty"`
+	ExportError    string        `json:"export_error,omitempty"`
 	mu             sync.RWMutex
+	feedbackMu     sync.Mutex
 }
 
 func (s *Session) Snapshot() Session {
@@ -82,7 +97,7 @@ func (s *Session) Snapshot() Session {
 		x.Options = append([]string(nil), s.Question.Options...)
 		question = &x
 	}
-	return Session{ID: s.ID, Prompt: s.Prompt, State: s.State, Context: s.Context, DecisionAreas: s.DecisionAreas, Error: s.Error, Question: question, UpdatedAt: s.UpdatedAt, QuestionCount: s.QuestionCount, QuestionKeys: append([]string(nil), s.QuestionKeys...), TotalQuestions: s.TotalQuestions}
+	return Session{ID: s.ID, Prompt: s.Prompt, State: s.State, Context: s.Context, DecisionAreas: s.DecisionAreas, Error: s.Error, Question: question, UpdatedAt: s.UpdatedAt, QuestionCount: s.QuestionCount, QuestionKeys: append([]string(nil), s.QuestionKeys...), TotalQuestions: s.TotalQuestions, ExportStatus: s.ExportStatus, ExportError: s.ExportError}
 }
 
 type Manager struct {
@@ -90,6 +105,7 @@ type Manager struct {
 	explorer    Researcher
 	client      LLM
 	root        string
+	exporter    Exporter
 	mu          sync.RWMutex
 	sessions    map[string]*Session
 	subscribers map[string]map[chan Event]struct{}
@@ -104,7 +120,7 @@ func NewManager(s *store.PlanStore, explorer Researcher, client LLM, root string
 	for _, summary := range s.List() {
 		if p := s.Get(summary.ID); p != nil && p.Session != nil {
 			x := p.Session
-			s := &Session{ID: x.ID, Prompt: x.Prompt, State: State(x.State), Context: x.Context, DecisionAreas: x.DecisionAreas, Error: x.Error, Question: x.Question, UpdatedAt: x.UpdatedAt, QuestionCount: x.QuestionCount, QuestionKeys: append([]string(nil), x.QuestionKeys...), TotalQuestions: x.TotalQuestions}
+			s := &Session{ID: x.ID, Prompt: x.Prompt, State: State(x.State), Context: x.Context, DecisionAreas: x.DecisionAreas, Error: x.Error, Question: x.Question, UpdatedAt: x.UpdatedAt, QuestionCount: x.QuestionCount, QuestionKeys: append([]string(nil), x.QuestionKeys...), TotalQuestions: x.TotalQuestions, ExportStatus: x.ExportStatus, ExportError: x.ExportError}
 			if s.UpdatedAt.IsZero() {
 				s.UpdatedAt = time.Now().UTC()
 			}
@@ -424,6 +440,247 @@ func (m *Manager) completeGrilling(s *Session) {
 		_ = m.store.Upsert(s.ID, p)
 	}
 	m.emit(Event{PlanID: s.ID, State: Generating, At: time.Now().UTC()})
+	go m.generate(context.Background(), s)
+}
+
+const maxPlanInput = 12000
+
+type GeneratedPlan struct {
+	Title   string         `json:"title"`
+	Summary string         `json:"summary"`
+	Modules []model.Module `json:"modules"`
+}
+
+func parsePlan(content string) (GeneratedPlan, error) {
+	var p GeneratedPlan
+	dec := json.NewDecoder(strings.NewReader(strings.TrimSpace(content)))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&p); err != nil {
+		return p, fmt.Errorf("invalid plan response: %w", err)
+	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		return p, errors.New("invalid plan response: trailing data")
+	}
+	if err := validatePlan(p); err != nil {
+		return p, err
+	}
+	return p, nil
+}
+
+func validatePlan(p GeneratedPlan) error {
+	if strings.TrimSpace(p.Title) == "" || len(p.Title) > 300 || strings.TrimSpace(p.Summary) == "" {
+		return errors.New("invalid plan title or summary")
+	}
+	if len(p.Modules) < 8 || len(p.Modules) > 64 {
+		return errors.New("plan must contain required modules")
+	}
+	required := map[string]bool{"criteria": false, "steps": false, "risks": false, "decision": false, "assumptions": false, "changes": false, "notes": false}
+	stages := map[int]map[string]bool{}
+	re := regexp.MustCompile(`^Stage ([1-9][0-9]*): .+`)
+	for _, mod := range p.Modules {
+		if _, ok := required[mod.Type]; !ok {
+			return fmt.Errorf("invalid module type: %s", mod.Type)
+		}
+		required[mod.Type] = true
+		if strings.TrimSpace(mod.Heading) == "" || len(mod.Items) == 0 {
+			return errors.New("invalid module")
+		}
+		for _, item := range mod.Items {
+			if strings.TrimSpace(item.Text) == "" || len(item.Text) > maxPlanInput {
+				return errors.New("invalid plan item")
+			}
+		}
+		match := re.FindStringSubmatch(mod.Heading)
+		staged := mod.Type == "criteria" || mod.Type == "steps" || mod.Type == "risks"
+		if staged && match == nil {
+			return fmt.Errorf("%s module must be stage-prefixed", mod.Type)
+		}
+		if !staged && match != nil {
+			return fmt.Errorf("%s module must be global", mod.Type)
+		}
+		if match != nil {
+			n, _ := strconv.Atoi(match[1])
+			if stages[n] == nil {
+				stages[n] = map[string]bool{}
+			}
+			if stages[n][mod.Type] {
+				return fmt.Errorf("duplicate stage %d module", n)
+			}
+			stages[n][mod.Type] = true
+		}
+	}
+	for typ, ok := range required {
+		if !ok {
+			return fmt.Errorf("missing module type: %s", typ)
+		}
+	}
+	if len(stages) == 0 {
+		return errors.New("plan must contain at least one stage")
+	}
+	for n := 1; n <= len(stages); n++ {
+		if len(stages[n]) != 3 {
+			return fmt.Errorf("stage %d must contain criteria, steps, and risks", n)
+		}
+	}
+	return nil
+}
+
+func (m *Manager) generate(ctx context.Context, s *Session) {
+	fail := func(err error) { m.failGrill(s, err) }
+	if m.client == nil {
+		fail(errors.New("llm client is unavailable"))
+		return
+	}
+	x := s.Snapshot()
+	input := fmt.Sprintf("Request:\n%s\nResearch:\n%s\nDecision areas:\n%s\n", x.Prompt, x.Context, x.DecisionAreas)
+	if p := m.store.Get(s.ID); p != nil {
+		for _, msg := range p.Messages {
+			if msg.Prompt != nil && msg.Prompt.Answered {
+				input += msg.Prompt.Question + ": " + msg.Prompt.Answer + "\n"
+			}
+		}
+	}
+	if len(input) > maxPlanInput*3 {
+		input = input[:maxPlanInput*3]
+	}
+	resp, err := m.client.Chat(ctx, []llm.Message{{Role: "system", Content: llm.PlanSystemPrompt + " Return ONLY strict JSON with title, summary, modules. Required types: criteria, steps, risks, decision, assumptions, changes, notes. criteria/steps/risks headings must be Stage N: Name, contiguous, with all three per stage; other modules global."}, {Role: "user", Content: input}})
+	if err != nil {
+		fail(err)
+		return
+	}
+	if len(resp.Choices) == 0 {
+		fail(errors.New("llm returned no plan response"))
+		return
+	}
+	plan, err := parsePlan(resp.Choices[0].Message.Content)
+	if err != nil {
+		fail(err)
+		return
+	}
+	stored := m.store.Get(s.ID)
+	if stored == nil {
+		fail(errors.New("plan not found"))
+		return
+	}
+	stored.Title, stored.Summary, stored.Modules, stored.State = plan.Title, plan.Summary, plan.Modules, "draft"
+	if err = m.store.Upsert(s.ID, stored); err != nil {
+		fail(err)
+		return
+	}
+	if err = m.transition(s, Reviewing); err != nil {
+		fail(err)
+		return
+	}
+	m.emit(Event{PlanID: s.ID, State: Reviewing, At: time.Now().UTC()})
+}
+
+func (m *Manager) SetExporter(exporter Exporter) { m.exporter = exporter }
+
+func (m *Manager) Feedback(id, ref, text string) error {
+	text = strings.TrimSpace(text)
+	if text == "" || len(text) > maxAnswerLength {
+		return errors.New("feedback must be between 1 and 4000 characters")
+	}
+	m.mu.RLock()
+	s := m.sessions[id]
+	m.mu.RUnlock()
+	if s == nil {
+		return errors.New("session not found")
+	}
+	if s.Snapshot().State != Reviewing {
+		return errors.New("plan is not under review")
+	}
+	// Serialize the full read/LLM/write cycle so concurrent feedback cannot overwrite updates.
+	s.feedbackMu.Lock()
+	defer s.feedbackMu.Unlock()
+	p := m.store.Get(id)
+	if p == nil {
+		return errors.New("plan not found")
+	}
+	if ref != "" {
+		parts := strings.Split(ref, ":")
+		if len(parts) != 2 {
+			return errors.New("invalid item reference")
+		}
+		mi, e1 := strconv.Atoi(parts[0])
+		ii, e2 := strconv.Atoi(parts[1])
+		if e1 != nil || e2 != nil || mi < 0 || ii < 0 || mi >= len(p.Modules) || ii >= len(p.Modules[mi].Items) {
+			return errors.New("invalid item reference")
+		}
+	}
+	if _, err := m.store.AddMessage(id, "human", text, ref, nil); err != nil {
+		return err
+	}
+	if m.client == nil {
+		return errors.New("llm client is unavailable")
+	}
+	payload, _ := json.Marshal(p.Modules)
+	prompt := fmt.Sprintf("Current modules JSON:\n%s\nFeedback for item %s:\n%s\nReturn ONLY a complete replacement JSON object with title, summary, modules, preserving required rules.", payload, ref, text)
+	resp, err := m.client.Chat(context.Background(), []llm.Message{{Role: "system", Content: llm.PlanSystemPrompt + " Output only strict JSON."}, {Role: "user", Content: prompt}})
+	if err != nil {
+		return err
+	}
+	if len(resp.Choices) == 0 {
+		return errors.New("llm returned no feedback response")
+	}
+	updated, err := parsePlan(resp.Choices[0].Message.Content)
+	if err != nil {
+		return err
+	}
+	p.Title, p.Summary, p.Modules = updated.Title, updated.Summary, updated.Modules
+	if err = m.store.Upsert(id, p); err != nil {
+		return err
+	}
+	m.emit(Event{PlanID: id, State: Reviewing, At: time.Now().UTC()})
+	return nil
+}
+
+func (m *Manager) Approve(id string) error {
+	m.mu.RLock()
+	s := m.sessions[id]
+	m.mu.RUnlock()
+	if s == nil {
+		return errors.New("session not found")
+	}
+	if s.Snapshot().State != Reviewing {
+		return errors.New("plan is not under review")
+	}
+	if err := m.store.SetState(id, "approved"); err != nil {
+		return err
+	}
+	if err := m.transition(s, Approved); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.ExportStatus, s.ExportError = "pending", ""
+	s.UpdatedAt = time.Now().UTC()
+	s.mu.Unlock()
+	_ = m.persistSession(s)
+	m.emit(Event{PlanID: id, State: Approved, At: time.Now().UTC()})
+	if m.exporter == nil {
+		m.setExportResult(s, errors.New("exporter is not configured"))
+		return errors.New("exporter is not configured")
+	}
+	if err := m.exporter.Export(context.Background(), m.store.Get(id)); err != nil {
+		m.setExportResult(s, err)
+		return err
+	}
+	m.setExportResult(s, nil)
+	return nil
+}
+
+func (m *Manager) setExportResult(s *Session, err error) {
+	s.mu.Lock()
+	if err == nil {
+		s.ExportStatus, s.ExportError = "succeeded", ""
+	} else {
+		s.ExportStatus, s.ExportError = "failed", err.Error()
+	}
+	s.UpdatedAt = time.Now().UTC()
+	s.mu.Unlock()
+	_ = m.persistSession(s)
+	m.emit(Event{PlanID: s.ID, State: s.Snapshot().State, Error: s.Snapshot().ExportError, At: time.Now().UTC()})
 }
 
 func (m *Manager) validateQuestion(s *Session, q grillResponse) error {
@@ -472,7 +729,7 @@ func (m *Manager) postQuestion(s *Session, q grillResponse) {
 
 func sessionState(s *Session) *model.SessionState {
 	x := s.Snapshot()
-	return &model.SessionState{ID: x.ID, Prompt: x.Prompt, State: string(x.State), Context: x.Context, DecisionAreas: x.DecisionAreas, Error: x.Error, Question: x.Question, UpdatedAt: x.UpdatedAt, QuestionCount: x.QuestionCount, QuestionKeys: x.QuestionKeys, TotalQuestions: x.TotalQuestions}
+	return &model.SessionState{ID: x.ID, Prompt: x.Prompt, State: string(x.State), Context: x.Context, DecisionAreas: x.DecisionAreas, Error: x.Error, Question: x.Question, UpdatedAt: x.UpdatedAt, QuestionCount: x.QuestionCount, QuestionKeys: x.QuestionKeys, TotalQuestions: x.TotalQuestions, ExportStatus: x.ExportStatus, ExportError: x.ExportError}
 }
 
 func (m *Manager) failGrill(s *Session, err error) {
