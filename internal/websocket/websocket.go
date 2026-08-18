@@ -73,6 +73,10 @@ type Hub struct {
 	expectedOrigin string
 }
 
+func (h *Hub) ExpectedOrigin() string { return h.expectedOrigin }
+
+func (h *Hub) OriginAllowed(r *http.Request) bool { return originAllowed(r, h.expectedOrigin) }
+
 func NewHub(expectedOrigin ...string) *Hub {
 	origin := "http://localhost:8080"
 	if len(expectedOrigin) > 0 && expectedOrigin[0] != "" {

@@ -1,11 +1,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gleneder/symphony/internal/conversation"
 	"github.com/gleneder/symphony/internal/model"
 	"github.com/gleneder/symphony/internal/store"
 	ws "github.com/gleneder/symphony/internal/websocket"
+	"github.com/gorilla/websocket"
 	"html/template"
 	"net/http"
 	"path/filepath"
@@ -25,10 +28,81 @@ type PageData struct {
 	PlanID string
 }
 
-func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.Hub, a *ws.AgentState, base string) {
+func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.Hub, a *ws.AgentState, base string, cm ...*conversation.Manager) {
+	var conversations *conversation.Manager
+	if len(cm) > 0 {
+		conversations = cm[0]
+	}
 	jsonOut := func(w http.ResponseWriter, v any) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(v)
+	}
+
+	m.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		if conversations != nil {
+			render(w, t, filepath.Join(base, "templates/welcome.html"), map[string]any{"Year": time.Now().Year()})
+			return
+		}
+		http.Redirect(w, r, "/plans", 302)
+	})
+	if conversations != nil {
+		m.HandleFunc("POST /api/session/start", func(w http.ResponseWriter, r *http.Request) {
+			var b struct {
+				Prompt string `json:"prompt"`
+			}
+			if json.NewDecoder(r.Body).Decode(&b) != nil {
+				http.Error(w, "invalid request", 400)
+				return
+			}
+			x, e := conversations.Start(context.Background(), b.Prompt)
+			if e != nil {
+				http.Error(w, e.Error(), 400)
+				return
+			}
+			jsonOut(w, x)
+		})
+		m.HandleFunc("GET /api/session/", func(w http.ResponseWriter, r *http.Request) {
+			id := strings.TrimPrefix(r.URL.Path, "/api/session/")
+			if r.Method == http.MethodPost && strings.HasSuffix(id, "/retry") {
+				id = strings.TrimSuffix(id, "/retry")
+				if e := conversations.Retry(id); e != nil {
+					http.Error(w, e.Error(), http.StatusConflict)
+					return
+				}
+				jsonOut(w, conversations.Session(id))
+				return
+			}
+			x := conversations.Session(id)
+			if x == nil {
+				http.NotFound(w, r)
+				return
+			}
+			jsonOut(w, x)
+		})
+		m.HandleFunc("GET /ws/session/", func(w http.ResponseWriter, r *http.Request) {
+			id := strings.TrimPrefix(r.URL.Path, "/ws/session/")
+			if conversations.Session(id) == nil {
+				http.NotFound(w, r)
+				return
+			}
+			if !h.OriginAllowed(r) {
+				http.Error(w, "origin not allowed", http.StatusForbidden)
+				return
+			}
+			ch, done := conversations.Subscribe(id)
+			defer done()
+			upgrader := websocketUpgrader(h.ExpectedOrigin())
+			c, e := upgrader.Upgrade(w, r, nil)
+			if e != nil {
+				return
+			}
+			defer c.Close()
+			for e := range ch {
+				if c.WriteJSON(e) != nil {
+					return
+				}
+			}
+		})
 	}
 	m.HandleFunc("GET /plans", func(w http.ResponseWriter, r *http.Request) {
 		render(w, t, filepath.Join(base, "templates/plans.html"), ListData{"Plans", time.Now().Year(), s.List()})
@@ -168,6 +242,9 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 		jsonOut(w, map[string]string{"status": "ok"})
 	})
 	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/plans", 302) })
+}
+func websocketUpgrader(expectedOrigin string) websocket.Upgrader {
+	return websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return r.Header.Get("Origin") == expectedOrigin }}
 }
 func render(w http.ResponseWriter, t *template.Template, page string, data any) {
 	x, e := t.Clone()

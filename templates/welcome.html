@@ -1,0 +1,24 @@
+{{define "title"}}Welcome — Maestro{{end}}
+{{define "page-content"}}<section class="hero"><h1>What would you like to plan?</h1><p>Describe the change, feature, or problem. Maestro will research the codebase and guide you through the decisions.</p><form id="start-form"><textarea id="prompt" name="prompt" rows="7" placeholder="I want to plan..." required></textarea><button type="submit">Start planning</button></form><p id="status" role="status"></p><pre id="context" hidden></pre></section><script>
+const form = document.getElementById('start-form');
+const status = document.getElementById('status');
+const context = document.getElementById('context');
+let socket;
+function render(session) {
+  if (!session) return;
+  status.textContent = session.state === 'failed' ? `Research failed: ${session.error || 'unknown error'}` : session.state === 'grilling' ? 'Research complete. Continue planning.' : session.state === 'researching' ? 'Researching your codebase…' : session.state;
+  context.textContent = session.context || session.decision_areas || '';
+  context.hidden = !context.textContent;
+  if (session.state === 'failed') { const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry'; retry.onclick = () => fetch(`/api/session/${encodeURIComponent(session.id)}/retry`, {method: 'POST'}).then(r => r.json()).then(connect); status.append(' ', retry); }
+}
+function connect(session) {
+  render(session);
+  const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  socket = new WebSocket(`${scheme}//${location.host}/ws/session/${encodeURIComponent(session.id)}`);
+  socket.onopen = () => render(session);
+  socket.onmessage = event => { const update = JSON.parse(event.data); render(update.session || update); if (update.state === 'failed' || update.state === 'grilling') form.querySelector('button').disabled = false; };
+  socket.onerror = () => { status.textContent = 'Connection error. Retrying…'; };
+  socket.onclose = () => { if (session.state === 'researching') setTimeout(() => connect(session), 1000); };
+}
+form.addEventListener('submit', async event => { event.preventDefault(); form.querySelector('button').disabled = true; status.textContent = 'Starting…'; try { const response = await fetch('/api/session/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt:document.getElementById('prompt').value})}); const session = await response.json(); if (!response.ok) throw new Error(session.error || 'Unable to start'); connect(session); } catch (error) { status.textContent = error.message; form.querySelector('button').disabled = false; } });
+</script>{{end}}

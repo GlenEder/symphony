@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/gleneder/symphony/internal/codebase"
 	"github.com/gleneder/symphony/internal/config"
+	"github.com/gleneder/symphony/internal/conversation"
 	"github.com/gleneder/symphony/internal/handler"
+	"github.com/gleneder/symphony/internal/llm"
 	"github.com/gleneder/symphony/internal/model"
 	"github.com/gleneder/symphony/internal/store"
 	"github.com/gleneder/symphony/internal/watcher"
@@ -58,7 +61,8 @@ func main() {
 	poll := watcher.Start(s, cfg.MaestroPlansDir, 500*time.Millisecond)
 	defer poll.Close()
 	mux := http.NewServeMux()
-	handler.Register(mux, tmpl, s, hub, state, base)
+	cm := conversation.NewManager(s, codebase.New(codebase.Options{}), &llm.Client{BaseURL: cfg.LLMBaseURL, APIKey: cfg.LLMAPIKey, Model: cfg.LLMModel}, cfg.CodebasePath)
+	handler.Register(mux, tmpl, s, hub, state, base, cm)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	mux.Handle("/style.css", http.FileServer(http.Dir("static")))
 	mux.Handle("/script.js", http.FileServer(http.Dir("static")))
