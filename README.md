@@ -1,74 +1,63 @@
-# Symphony — Coding Agent Skill Suite
+# Symphony Maestro
 
-A collection of skills, prompts, and configurations designed for the [Maki](https://github.com/gleneder/maki) coding agent. These skills encode reusable workflows and agent instructions that Maki loads at runtime to perform complex software engineering tasks.
+Symphony Maestro is a standalone planning application.
+It opens a browser, researches a local codebase through an OpenAI-compatible API, guides a grilling conversation, renders a reviewable plan, and exports approved work tickets.
+Maki is not required to run Maestro.
+The legacy implementation remains in `legacy-maestro/` for compatibility.
 
-While tailored for Maki, the individual skills are plain markdown and shell files — they should transpose to other coding agent systems (e.g., Claude Code, Cline, Aider) with minimal adaptation.
+## Standalone setup
 
-The skills and systems in this repo are heavily influenced by outside sources like:
-- [Matt Pocock's Skills](https://github.com/mattpocock/skills)
-- [Lavish-Axi](https://github.com/kunchenguid/lavish-axi)
-
-
-## What's Included
-
-- **Skills** (`.config/maki/skills/`) — Markdown instruction files that teach the agent specialized workflows, such as:
-  - `gh` — GitHub CLI operations (PRs, issues, releases, Actions)
-  - `maki-agent` — Maki configuration and usage reference
-  - `plan-implementation-procedure` — Agentic implementer↔reviewer subagent loop on an approved plan (max 3 iterations), then a draft PR via publish-it
-  - `publish-it` — Quick one-shot PR publishing
-  - `create-bash-script` — Bash script scaffolding
-  - `research` — Delegate reading legwork to a background subagent against primary sources
-- **Setup script** — Symlinks everything into the correct Maki config directory
-
-## Prerequisites
-
-- [Maki](https://github.com/gleneder/maki) coding agent installed and configured
-- Bash
-- [fswatch](https://emcrisostomo.github.io/fswatch/) (recommended, not required) — enables zero-token-wait feedback sessions in the Maestro skill. Falls back to `stat` polling if unavailable.
-
-## Setup
-
-Run the setup script from the repo root:
+Requirements: Go 1.26 or newer and an OpenAI-compatible API provider.
 
 ```bash
-./setup.sh
+git clone https://github.com/gleneder/symphony.git
+cd symphony
+go build -o maestro ./cmd/maestro
+./maestro serve /path/to/codebase
 ```
 
-This will symlink all skills and config files into `~/.config/maki/` (or `$XDG_CONFIG_HOME/maki/` if set).
+The server binds to `127.0.0.1:8080` by default, so it is not exposed to the network. Set `MAESTRO_ADDRESS` explicitly when remote access is required, and use the configured address and actual port shown in the startup log as the browser URL.
+The HTTP server, file watcher, and active conversation workers terminate cleanly on SIGINT or SIGTERM.
+The command must be run from the repository checkout, or set `MAESTRO_DIR` to the checkout path so templates and static assets can be found.
 
-To preview what would be linked without making changes:
+## Configuration
+
+Copy `.env.example` to `.env`, or set environment variables directly.
+Existing environment variables take precedence over `.env`.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MAESTRO_ADDRESS` | `127.0.0.1` | HTTP bind address; keep loopback unless remote access is explicitly required |
+| `PORT` | `8080` | HTTP listening port |
+| `CODEBASE_PATH` | `.` | Codebase to research; the `serve` argument sets this |
+| `LLM_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible API base URL |
+| `LLM_API_KEY` | empty | API credential |
+| `LLM_MODEL` | `gpt-4o-mini` | Chat completion model |
+| `MAESTRO_PLANS_DIR` | `plans` | Persistent plan files |
+| `MAESTRO_TRACEABILITY_URL` | empty | Optional ticket traceability link |
+| `MAESTRO_DIR` | executable directory or `.` | Templates and static assets |
+
+Any provider implementing `POST /chat/completions` with OpenAI-compatible request and response JSON can be used.
+Tests use a local mock provider and never make live API calls.
+
+## Workflow and output
+
+Open the welcome page, submit a prompt, let Maestro research the codebase, answer the grilling questions, review the generated plan, and approve it.
+Approval exports Markdown work tickets to `~/.config/symphony/work_tickets/` by default.
+Staged plans are written as `{plan-id}-stage-{N}.md`.
+Legacy single-stage plans are written as `{plan-id}.md`.
+Plans are persisted in `MAESTRO_PLANS_DIR` and can be reopened after restart.
+
+Maestro logs HTTP requests, opens the browser cross-platform on macOS, Windows, and Linux, and shuts down the HTTP server, watcher, and active conversations gracefully on SIGINT or SIGTERM.
+
+## Development
 
 ```bash
-./setup.sh --dry-run
+gofmt -l .
+go vet ./...
+go test ./...
+go test -race ./...
+go build -o /tmp/symphony-maestro ./cmd/maestro
 ```
 
-The setup is safe to re-run — it updates symlinks incrementally and skips any sources that don't exist.
-
-## Project Structure
-
-```
-symphony/
-├── setup.sh          # Installation script (symlinks into ~/.config/maki/)
-├── AGENTS.md         # Global agent instructions (optional)
-├── init.lua          # Maki init configuration (optional)
-├── skills/           # Skill markdown files (subdirectories)
-├── commands/         # Custom commands (optional)
-├── providers/        # Provider scripts (optional)
-└── .plans/           # Planning documents
-```
-
-## Usage
-
-Once setup is complete, skills are available to the Maki agent on demand. For example, when working with GitHub, the agent can load the `gh` skill for guided PR/release workflows.
-
-## Transposing to Other Agents
-
-Each skill is a standalone markdown file with a consistent structure (purpose, instructions, examples, gotchas). To adapt for another agent system:
-
-1. Port the markdown skills to your agent's instruction format (many agents accept markdown prompts directly)
-2. Port shell-based commands as needed
-3. The `setup.sh` script is Maki-specific; for other agents, simply copy the skill files to the equivalent config directory
-
-## License
-
-MIT
+The automated suite includes unit, HTTP handler, local-provider end-to-end workflow, browser-fallback, and deterministic SIGINT/SIGTERM lifecycle coverage. The integration workflow uses a temporary codebase and local OpenAI-compatible mock server, and verifies ticket export without live API calls.

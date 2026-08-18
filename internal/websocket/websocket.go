@@ -73,9 +73,21 @@ type Hub struct {
 	expectedOrigin string
 }
 
-func (h *Hub) ExpectedOrigin() string { return h.expectedOrigin }
+func (h *Hub) ExpectedOrigin() string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.expectedOrigin
+}
 
-func (h *Hub) OriginAllowed(r *http.Request) bool { return originAllowed(r, h.expectedOrigin) }
+func (h *Hub) SetExpectedOrigin(origin string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.expectedOrigin = origin
+}
+
+func (h *Hub) OriginAllowed(r *http.Request) bool {
+	return originAllowed(r, h.ExpectedOrigin())
+}
 
 func NewHub(expectedOrigin ...string) *Hub {
 	origin := "http://localhost:8080"
@@ -142,7 +154,8 @@ func (h *Hub) Handler(s *store.PlanStore, a *AgentState) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
-		upgrader := newUpgrader(h.expectedOrigin)
+		hubOrigin := h.ExpectedOrigin()
+		upgrader := newUpgrader(hubOrigin)
 		c, e := upgrader.Upgrade(w, r, nil)
 		if e != nil {
 			return

@@ -16,6 +16,7 @@ type Config struct {
 	LLMModel        string
 	LLMBaseURL      string
 	Port            int
+	Address         string
 	MaestroPlansDir string
 	CodebasePath    string
 	TraceabilityURL string
@@ -36,6 +37,7 @@ func Load(envPath string) (Config, error) {
 		return Config{}, fmt.Errorf("PORT must be a valid port number")
 	}
 
+	address := value("MAESTRO_ADDRESS", "127.0.0.1")
 	plansDir := value("MAESTRO_PLANS_DIR", "plans")
 	codebasePath := value("CODEBASE_PATH", ".")
 	if !filepath.IsAbs(codebasePath) {
@@ -50,6 +52,7 @@ func Load(envPath string) (Config, error) {
 		LLMModel:        value("LLM_MODEL", "gpt-4o-mini"),
 		LLMBaseURL:      value("LLM_BASE_URL", "https://api.openai.com/v1"),
 		Port:            port,
+		Address:         address,
 		MaestroPlansDir: plansDir,
 		CodebasePath:    codebasePath,
 		TraceabilityURL: os.Getenv("MAESTRO_TRACEABILITY_URL"),

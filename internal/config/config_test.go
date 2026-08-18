@@ -7,14 +7,14 @@ import (
 )
 
 func TestLoadDotEnv(t *testing.T) {
-	for _, key := range []string{"LLM_API_KEY", "PORT"} {
+	for _, key := range []string{"LLM_API_KEY", "PORT", "MAESTRO_ADDRESS"} {
 		if err := os.Unsetenv(key); err != nil {
 			t.Fatal(err)
 		}
 	}
 	dir := t.TempDir()
 	envPath := filepath.Join(dir, ".env")
-	if err := os.WriteFile(envPath, []byte("LLM_API_KEY=secret\nLLM_MODEL='test-model'\nPORT=9090\nLLM_BASE_URL=http://localhost:1234/v1\nMAESTRO_PLANS_DIR=/tmp/plans\nCODEBASE_PATH=/tmp/code\n"), 0600); err != nil {
+	if err := os.WriteFile(envPath, []byte("LLM_API_KEY=secret\nLLM_MODEL='test-model'\nPORT=9090\nMAESTRO_ADDRESS=127.0.0.2\nLLM_BASE_URL=http://localhost:1234/v1\nMAESTRO_PLANS_DIR=/tmp/plans\nCODEBASE_PATH=/tmp/code\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -22,20 +22,20 @@ func TestLoadDotEnv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.LLMAPIKey != "secret" || cfg.LLMModel != "test-model" || cfg.Port != 9090 || cfg.CodebasePath != "/tmp/code" {
+	if cfg.LLMAPIKey != "secret" || cfg.LLMModel != "test-model" || cfg.Port != 9090 || cfg.Address != "127.0.0.2" || cfg.CodebasePath != "/tmp/code" {
 		t.Fatalf("unexpected config: %+v", cfg)
 	}
 }
 
 func TestLoadDefaultsWhenEnvFileIsMissing(t *testing.T) {
-	for _, key := range []string{"LLM_API_KEY", "LLM_MODEL", "LLM_BASE_URL", "PORT", "MAESTRO_PLANS_DIR", "CODEBASE_PATH"} {
+	for _, key := range []string{"LLM_API_KEY", "LLM_MODEL", "LLM_BASE_URL", "PORT", "MAESTRO_ADDRESS", "MAESTRO_PLANS_DIR", "CODEBASE_PATH"} {
 		t.Setenv(key, "")
 	}
 	cfg, err := Load(filepath.Join(t.TempDir(), ".env"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Port != 8080 || cfg.LLMModel == "" || cfg.CodebasePath == "" {
+	if cfg.Port != 8080 || cfg.Address != "127.0.0.1" || cfg.LLMModel == "" || cfg.CodebasePath == "" {
 		t.Fatalf("unexpected defaults: %+v", cfg)
 	}
 }
