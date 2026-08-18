@@ -61,6 +61,22 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 			}
 			jsonOut(w, x)
 		})
+		m.HandleFunc("POST /api/session/{id}/answer", func(w http.ResponseWriter, r *http.Request) {
+			var b struct {
+				Answer string `json:"answer"`
+			}
+			dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 5000))
+			dec.DisallowUnknownFields()
+			if dec.Decode(&b) != nil {
+				http.Error(w, "invalid request", http.StatusBadRequest)
+				return
+			}
+			if err := conversations.Answer(r.PathValue("id"), b.Answer); err != nil {
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
+			jsonOut(w, conversations.Session(r.PathValue("id")))
+		})
 		m.HandleFunc("GET /api/session/", func(w http.ResponseWriter, r *http.Request) {
 			id := strings.TrimPrefix(r.URL.Path, "/api/session/")
 			if r.Method == http.MethodPost && strings.HasSuffix(id, "/retry") {

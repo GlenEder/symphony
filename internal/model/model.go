@@ -7,21 +7,38 @@ import (
 )
 
 type Plan struct {
-	Title     string    `json:"title"`
-	Summary   string    `json:"summary"`
-	State     string    `json:"state"`
-	UpdatedAt string    `json:"updated_at,omitempty"`
-	Messages  []Message `json:"messages,omitempty"`
-	Modules   []Module  `json:"modules"`
+	Title     string        `json:"title"`
+	Summary   string        `json:"summary"`
+	State     string        `json:"state"`
+	UpdatedAt string        `json:"updated_at,omitempty"`
+	Messages  []Message     `json:"messages,omitempty"`
+	Modules   []Module      `json:"modules"`
+	Session   *SessionState `json:"session,omitempty"`
+}
+
+type SessionState struct {
+	ID             string    `json:"id"`
+	Prompt         string    `json:"prompt"`
+	State          string    `json:"state"`
+	Context        string    `json:"context,omitempty"`
+	DecisionAreas  string    `json:"decision_areas,omitempty"`
+	Error          string    `json:"error,omitempty"`
+	Question       *Prompt   `json:"question,omitempty"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	QuestionCount  int       `json:"question_count"`
+	QuestionKeys   []string  `json:"question_keys,omitempty"`
+	TotalQuestions int       `json:"total_questions,omitempty"`
 }
 type Prompt struct {
 	QuestionKey    string   `json:"question_key"`
+	Question       string   `json:"question,omitempty"`
 	Options        []string `json:"options"`
 	AllowCustom    bool     `json:"allow_custom"`
 	TotalQuestions int      `json:"total_questions,omitempty"`
 	Answered       bool     `json:"answered"`
 	Answer         string   `json:"answer,omitempty"`
 	Recommended    int      `json:"recommended,omitempty"`
+	Current        int      `json:"current,omitempty"`
 }
 type Message struct {
 	ID        string  `json:"id"`
