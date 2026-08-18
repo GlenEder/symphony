@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gleneder/symphony/internal/export"
 	"github.com/gleneder/symphony/internal/model"
 )
 
@@ -14,11 +15,12 @@ func TestExportApprovedPlanWritesDeterministicTicket(t *testing.T) {
 	t.Setenv("HOME", home)
 	p := &model.Plan{
 		Title:   "Stage 6",
+		State:   "approved",
 		Summary: "Finish the boundary.",
 		Session: &model.SessionState{ID: "plan-stage-6"},
 		Modules: []model.Module{{Type: "criteria", Heading: "Acceptance Criteria", Items: []model.Item{{Text: "Exports safely"}}}},
 	}
-	if err := exportApprovedPlan(t.Context(), p); err != nil {
+	if err := export.New(export.Config{}).Export(t.Context(), p); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(home, ".config", "symphony", "work_tickets", "plan-stage-6.md")

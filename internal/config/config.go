@@ -18,6 +18,7 @@ type Config struct {
 	Port            int
 	MaestroPlansDir string
 	CodebasePath    string
+	TraceabilityURL string
 }
 
 // Load reads an optional .env file and returns configuration from the
@@ -51,6 +52,7 @@ func Load(envPath string) (Config, error) {
 		Port:            port,
 		MaestroPlansDir: plansDir,
 		CodebasePath:    codebasePath,
+		TraceabilityURL: os.Getenv("MAESTRO_TRACEABILITY_URL"),
 	}, nil
 }
 

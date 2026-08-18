@@ -1,11 +1,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"github.com/gleneder/symphony/internal/codebase"
 	"github.com/gleneder/symphony/internal/config"
 	"github.com/gleneder/symphony/internal/conversation"
+	"github.com/gleneder/symphony/internal/export"
 	"github.com/gleneder/symphony/internal/handler"
 	"github.com/gleneder/symphony/internal/llm"
 	"github.com/gleneder/symphony/internal/model"
@@ -63,58 +63,13 @@ func main() {
 	defer poll.Close()
 	mux := http.NewServeMux()
 	cm := conversation.NewManager(s, codebase.New(codebase.Options{}), &llm.Client{BaseURL: cfg.LLMBaseURL, APIKey: cfg.LLMAPIKey, Model: cfg.LLMModel}, cfg.CodebasePath)
-	cm.SetExporter(conversation.ExporterFunc(exportApprovedPlan))
+	defer cm.Close()
+	cm.SetExporter(export.New(export.Config{TraceabilityURL: cfg.TraceabilityURL}))
 	handler.Register(mux, tmpl, s, hub, state, base, cm)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	mux.Handle("/style.css", http.FileServer(http.Dir("static")))
 	mux.Handle("/script.js", http.FileServer(http.Dir("static")))
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", cfg.Port), mux))
-}
-
-func exportApprovedPlan(ctx context.Context, p *model.Plan) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if p == nil {
-		return fmt.Errorf("approved plan is required")
-	}
-	if p == nil || p.Session == nil || !store.ValidPlanID(p.Session.ID) {
-		return fmt.Errorf("approved plan identity is required")
-	}
-	root, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	dir := filepath.Join(root, ".config", "symphony", "work_tickets")
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(dir, p.Session.ID+".md"), []byte(renderWorkTicket(p)), 0644)
-}
-
-func renderWorkTicket(p *model.Plan) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "# %s\\n\\n**Status**: pending\\n\\n", p.Title)
-	if p.Summary != "" {
-		fmt.Fprintf(&b, "%s\\n\\n", p.Summary)
-	}
-	for _, module := range p.Modules {
-		if module.Heading == "" {
-			continue
-		}
-		fmt.Fprintf(&b, "## %s\\n\\n", module.Heading)
-		for i, item := range module.Items {
-			if module.Type == "criteria" {
-				fmt.Fprintf(&b, "- [ ] %s\\n", item.Text)
-			} else if module.Type == "steps" {
-				fmt.Fprintf(&b, "%d. %s\\n", i+1, item.Text)
-			} else {
-				fmt.Fprintf(&b, "- %s\\n", item.Text)
-			}
-		}
-		b.WriteString("\\n")
-	}
-	return b.String()
 }
 
 func parseTemplates(base string) (*template.Template, error) {

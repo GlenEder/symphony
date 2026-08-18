@@ -33,7 +33,7 @@ const (
 
 var validTransitions = map[State][]State{
 	Idle: {Researching}, Researching: {Grilling, Reviewing, Failed}, Grilling: {Generating, Failed},
-	Generating: {Reviewing}, Reviewing: {Approved, Grilling}, Approved: {Exporting}, Exporting: {}, Failed: {Researching},
+	Generating: {Reviewing}, Reviewing: {Approved, Grilling}, Approved: {Exporting}, Exporting: {Approved, Failed}, Failed: {Researching},
 }
 
 func CanTransition(from, to State) bool {
@@ -112,11 +112,18 @@ type Manager struct {
 	history     map[string][]Event
 	sequences   map[string]uint64
 	cancels     map[string]context.CancelFunc
+	contexts    map[string]context.Context
+	workers     sync.WaitGroup
+	ctx         context.Context
+	cancel      context.CancelFunc
+	closeDone   chan struct{}
+	closed      bool
 	OnEvent     func(Event)
 }
 
 func NewManager(s *store.PlanStore, explorer Researcher, client LLM, root string) *Manager {
-	m := &Manager{store: s, explorer: explorer, client: client, root: root, sessions: map[string]*Session{}, subscribers: map[string]map[chan Event]struct{}{}, history: map[string][]Event{}, sequences: map[string]uint64{}, cancels: map[string]context.CancelFunc{}}
+	ctx, cancel := context.WithCancel(context.Background())
+	m := &Manager{store: s, explorer: explorer, client: client, root: root, sessions: map[string]*Session{}, subscribers: map[string]map[chan Event]struct{}{}, history: map[string][]Event{}, sequences: map[string]uint64{}, cancels: map[string]context.CancelFunc{}, contexts: map[string]context.Context{}, ctx: ctx, cancel: cancel, closeDone: make(chan struct{})}
 	for _, summary := range s.List() {
 		if p := s.Get(summary.ID); p != nil && p.Session != nil {
 			x := p.Session
@@ -134,15 +141,62 @@ func NewManager(s *store.PlanStore, explorer Researcher, client LLM, root string
 			}
 			m.sessions[summary.ID] = s
 			if s.State == Researching {
-				go m.research(context.Background(), s)
+				ctx, cancel := context.WithCancel(context.Background())
+				m.cancels[s.ID], m.contexts[s.ID] = cancel, ctx
+				m.run(func() { m.research(ctx, s) })
 			}
 			if s.State == Grilling && s.Question != nil && s.Question.Answered {
-				go m.nextQuestion(context.Background(), s, s.Question.Answer)
+				ctx, cancel := context.WithCancel(context.Background())
+				m.cancels[s.ID], m.contexts[s.ID] = cancel, ctx
+				m.run(func() { m.nextQuestion(ctx, s, s.Question.Answer) })
 			}
 		}
 	}
 	return m
 }
+func (m *Manager) run(work func()) {
+	m.mu.Lock()
+	if m.closed {
+		m.mu.Unlock()
+		return
+	}
+	m.workers.Add(1)
+	m.mu.Unlock()
+	go func() {
+		defer m.workers.Done()
+		work()
+	}()
+}
+
+// Close cancels all session and export work and waits for it to finish.
+func (m *Manager) Close() {
+	m.mu.Lock()
+	if m.closed {
+		done := m.closeDone
+		m.mu.Unlock()
+		<-done
+		return
+	}
+	m.closed = true
+	m.cancel()
+	for _, cancel := range m.cancels {
+		cancel()
+	}
+	done := m.closeDone
+	m.mu.Unlock()
+
+	m.workers.Wait()
+	m.mu.Lock()
+	for id, subscribers := range m.subscribers {
+		for ch := range subscribers {
+			close(ch)
+		}
+		delete(m.subscribers, id)
+	}
+	close(done)
+	m.mu.Unlock()
+}
+
 func (m *Manager) Session(id string) *Session {
 	m.mu.RLock()
 	s := m.sessions[id]
@@ -238,10 +292,10 @@ func (m *Manager) Start(ctx context.Context, prompt string) (*Session, error) {
 	// The request context must not control a session that outlives the HTTP request.
 	sessionCtx, cancel := context.WithCancel(context.Background())
 	m.mu.Lock()
-	m.cancels[id] = cancel
+	m.cancels[id], m.contexts[id] = cancel, sessionCtx
 	m.mu.Unlock()
 	m.emit(Event{PlanID: id, State: Researching, At: time.Now().UTC()})
-	go m.research(sessionCtx, s)
+	m.run(func() { m.research(sessionCtx, s) })
 	x := s.Snapshot()
 	return &x, nil
 }
@@ -269,14 +323,14 @@ func (m *Manager) Retry(id string) error {
 		cancel()
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	m.cancels[id] = cancel
+	m.cancels[id], m.contexts[id] = cancel, ctx
 	m.mu.Unlock()
 	if err := m.transition(s, Researching); err != nil {
 		cancel()
 		return err
 	}
 	m.emit(Event{PlanID: id, State: Researching, At: time.Now().UTC()})
-	go m.research(ctx, s)
+	m.run(func() { m.research(ctx, s) })
 	return nil
 }
 
@@ -376,9 +430,12 @@ func (m *Manager) Answer(id, answer string) error {
 	}
 	m.emit(Event{PlanID: id, State: Grilling, At: time.Now().UTC()})
 	m.mu.RLock()
-	ctx := context.Background()
+	ctx := m.contexts[id]
 	m.mu.RUnlock()
-	go m.nextQuestion(ctx, s, answer)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	m.run(func() { m.nextQuestion(ctx, s, answer) })
 	return nil
 }
 
@@ -440,7 +497,13 @@ func (m *Manager) completeGrilling(s *Session) {
 		_ = m.store.Upsert(s.ID, p)
 	}
 	m.emit(Event{PlanID: s.ID, State: Generating, At: time.Now().UTC()})
-	go m.generate(context.Background(), s)
+	m.mu.RLock()
+	ctx := m.contexts[s.ID]
+	m.mu.RUnlock()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	m.run(func() { m.generate(ctx, s) })
 }
 
 const maxPlanInput = 12000
@@ -652,17 +715,32 @@ func (m *Manager) Approve(id string) error {
 	if err := m.transition(s, Approved); err != nil {
 		return err
 	}
+	if err := m.transition(s, Exporting); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	s.ExportStatus, s.ExportError = "pending", ""
 	s.UpdatedAt = time.Now().UTC()
 	s.mu.Unlock()
 	_ = m.persistSession(s)
-	m.emit(Event{PlanID: id, State: Approved, At: time.Now().UTC()})
+	m.emit(Event{PlanID: id, State: Exporting, At: time.Now().UTC()})
 	if m.exporter == nil {
-		m.setExportResult(s, errors.New("exporter is not configured"))
-		return errors.New("exporter is not configured")
+		err := errors.New("exporter is not configured")
+		m.setExportResult(s, err)
+		return err
 	}
-	if err := m.exporter.Export(context.Background(), m.store.Get(id)); err != nil {
+	m.mu.Lock()
+	if m.closed {
+		m.mu.Unlock()
+		err := context.Canceled
+		m.setExportResult(s, err)
+		return err
+	}
+	m.workers.Add(1)
+	ctx := m.ctx
+	m.mu.Unlock()
+	defer m.workers.Done()
+	if err := m.exporter.Export(ctx, m.store.Get(id)); err != nil {
 		m.setExportResult(s, err)
 		return err
 	}
@@ -671,6 +749,13 @@ func (m *Manager) Approve(id string) error {
 }
 
 func (m *Manager) setExportResult(s *Session, err error) {
+	final := Approved
+	if err != nil {
+		final = Failed
+	}
+	if transitionErr := m.transition(s, final); transitionErr == nil {
+		_ = m.store.SetState(s.ID, string(final))
+	}
 	s.mu.Lock()
 	if err == nil {
 		s.ExportStatus, s.ExportError = "succeeded", ""
@@ -746,7 +831,12 @@ func (m *Manager) failGrill(s *Session, err error) {
 }
 
 func (m *Manager) research(ctx context.Context, s *Session) {
-	defer func() { m.mu.Lock(); delete(m.cancels, s.ID); m.mu.Unlock() }()
+	defer func() {
+		m.mu.Lock()
+		delete(m.cancels, s.ID)
+		delete(m.contexts, s.ID)
+		m.mu.Unlock()
+	}()
 	fail := func(err error) {
 		s.mu.Lock()
 		s.Error = err.Error()
