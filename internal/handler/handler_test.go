@@ -2,6 +2,8 @@ package handler
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -9,7 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/gleneder/symphony/internal/codebase"
+	"github.com/gleneder/symphony/internal/conversation"
 	"github.com/gleneder/symphony/internal/store"
 	ws "github.com/gleneder/symphony/internal/websocket"
 )
@@ -23,6 +28,43 @@ func testHandler(t *testing.T) (*http.ServeMux, *store.PlanStore) {
 	mux := http.NewServeMux()
 	Register(mux, template.New("test"), s, ws.NewHub(), ws.NewAgentState(), ".")
 	return mux, s
+}
+
+func TestSessionRetryRouteIsReachable(t *testing.T) {
+	s := store.New(t.TempDir(), nil)
+	m := conversation.NewManager(s, failingResearcher{}, nil, ".")
+	defer m.Close()
+	started, err := m.Start(context.Background(), "prompt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if got := m.Session(started.ID); got != nil && got.State == conversation.Failed {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	mux := http.NewServeMux()
+	Register(mux, template.New("test"), s, ws.NewHub(), ws.NewAgentState(), ".", m)
+	r := httptest.NewRequest(http.MethodPost, "/api/session/"+started.ID+"/retry", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	get := httptest.NewRequest(http.MethodGet, "/api/session/"+started.ID+"/retry", nil)
+	w = httptest.NewRecorder()
+	mux.ServeHTTP(w, get)
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("GET status = %d, want 405", w.Code)
+	}
+}
+
+type failingResearcher struct{}
+
+func (failingResearcher) Summary(string, codebase.SummaryOptions) (string, error) {
+	return "", errors.New("failed")
 }
 
 func TestLegacyJSONEndpointsRejectMalformedPayloads(t *testing.T) {

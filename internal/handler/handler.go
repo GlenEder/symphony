@@ -117,17 +117,19 @@ func Register(m *http.ServeMux, t *template.Template, s *store.PlanStore, h *ws.
 			}
 			jsonOut(w, conversations.Session(r.PathValue("id")))
 		})
-		m.HandleFunc("GET /api/session/", func(w http.ResponseWriter, r *http.Request) {
-			id := strings.TrimPrefix(r.URL.Path, "/api/session/")
-			if r.Method == http.MethodPost && strings.HasSuffix(id, "/retry") {
-				id = strings.TrimSuffix(id, "/retry")
-				if e := conversations.Retry(id); e != nil {
-					http.Error(w, e.Error(), http.StatusConflict)
-					return
-				}
-				jsonOut(w, conversations.Session(id))
+		m.HandleFunc("POST /api/session/{id}/retry", func(w http.ResponseWriter, r *http.Request) {
+			id := r.PathValue("id")
+			if err := conversations.Retry(id); err != nil {
+				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			}
+			jsonOut(w, conversations.Session(id))
+		})
+		m.HandleFunc("GET /api/session/{id}/retry", func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		})
+		m.HandleFunc("GET /api/session/", func(w http.ResponseWriter, r *http.Request) {
+			id := strings.TrimPrefix(r.URL.Path, "/api/session/")
 			x := conversations.Session(id)
 			if x == nil {
 				http.NotFound(w, r)
