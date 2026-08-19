@@ -2,12 +2,31 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/gleneder/symphony/internal/model"
 )
+
+func TestWelcomeTemplateUsesExplicitStatusAndElementReferences(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("..", "..", "templates", "welcome.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := string(content)
+	for _, want := range []string{"statusEl.textContent", "Researching your codebase…", "Preparing next question…", "Grilling complete. Preparing the plan…", "document.getElementById('status')"} {
+		if !strings.Contains(script, want) {
+			t.Errorf("welcome template missing %q", want)
+		}
+	}
+	for _, forbidden := range []string{"status.textContent", "context.textContent", "prompt.value", "progress.textContent", "question.textContent", "options.replaceChildren", "custom.value"} {
+		if strings.Contains(script, forbidden) {
+			t.Errorf("welcome template uses bare element reference %q", forbidden)
+		}
+	}
+}
 
 func TestPlanTemplateRendersModuleSpecificFields(t *testing.T) {
 	base := filepath.Join("..", "..")
