@@ -35,6 +35,7 @@ type PlanStore struct {
 }
 
 var validID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
+var persistTemp = regexp.MustCompile(`^\.[A-Za-z0-9][A-Za-z0-9_-]*-.+\.json$`)
 
 func ValidPlanID(id string) bool { return id != "" && validID.MatchString(id) }
 func validateID(id string) error {
@@ -56,10 +57,19 @@ func (s *PlanStore) LoadAll() error {
 		return e
 	}
 	for _, x := range es {
-		if !x.IsDir() && strings.HasSuffix(x.Name(), ".json") {
-			if err := s.load(filepath.Join(s.Dir, x.Name())); err != nil {
-				return err
+		if x.IsDir() || !strings.HasSuffix(x.Name(), ".json") {
+			continue
+		}
+		if strings.HasPrefix(x.Name(), ".") {
+			if persistTemp.MatchString(x.Name()) {
+				if err := os.Remove(filepath.Join(s.Dir, x.Name())); err != nil {
+					return err
+				}
 			}
+			continue
+		}
+		if err := s.load(filepath.Join(s.Dir, x.Name())); err != nil {
+			return err
 		}
 	}
 	return nil
