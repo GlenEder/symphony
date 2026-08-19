@@ -71,21 +71,23 @@ type Researcher interface {
 }
 
 type Session struct {
-	ID             string        `json:"id"`
-	Prompt         string        `json:"prompt"`
-	State          State         `json:"state"`
-	Context        string        `json:"context,omitempty"`
-	DecisionAreas  string        `json:"decision_areas,omitempty"`
-	Error          string        `json:"error,omitempty"`
-	Question       *model.Prompt `json:"question,omitempty"`
-	UpdatedAt      time.Time     `json:"updated_at"`
-	QuestionCount  int           `json:"question_count"`
-	QuestionKeys   []string      `json:"question_keys,omitempty"`
-	TotalQuestions int           `json:"total_questions,omitempty"`
-	ExportStatus   string        `json:"export_status,omitempty"`
-	ExportError    string        `json:"export_error,omitempty"`
-	mu             sync.RWMutex
-	feedbackMu     sync.Mutex
+	ID            string        `json:"id"`
+	Prompt        string        `json:"prompt"`
+	State         State         `json:"state"`
+	Context       string        `json:"context,omitempty"`
+	DecisionAreas string        `json:"decision_areas,omitempty"`
+	Error         string        `json:"error,omitempty"`
+	Question      *model.Prompt `json:"question,omitempty"`
+	UpdatedAt     time.Time     `json:"updated_at"`
+	QuestionCount int           `json:"question_count"`
+	QuestionKeys  []string      `json:"question_keys,omitempty"`
+	// QuestionProgressPersisted distinguishes current progress from legacy sessions.
+	QuestionProgressPersisted bool   `json:"question_progress_persisted,omitempty"`
+	TotalQuestions            int    `json:"total_questions,omitempty"`
+	ExportStatus              string `json:"export_status,omitempty"`
+	ExportError               string `json:"export_error,omitempty"`
+	mu                        sync.RWMutex
+	feedbackMu                sync.Mutex
 }
 
 func (s *Session) Snapshot() Session {
@@ -97,7 +99,7 @@ func (s *Session) Snapshot() Session {
 		x.Options = append([]string(nil), s.Question.Options...)
 		question = &x
 	}
-	return Session{ID: s.ID, Prompt: s.Prompt, State: s.State, Context: s.Context, DecisionAreas: s.DecisionAreas, Error: s.Error, Question: question, UpdatedAt: s.UpdatedAt, QuestionCount: s.QuestionCount, QuestionKeys: append([]string(nil), s.QuestionKeys...), TotalQuestions: s.TotalQuestions, ExportStatus: s.ExportStatus, ExportError: s.ExportError}
+	return Session{ID: s.ID, Prompt: s.Prompt, State: s.State, Context: s.Context, DecisionAreas: s.DecisionAreas, Error: s.Error, Question: question, UpdatedAt: s.UpdatedAt, QuestionCount: s.QuestionCount, QuestionKeys: append([]string(nil), s.QuestionKeys...), QuestionProgressPersisted: s.QuestionProgressPersisted, TotalQuestions: s.TotalQuestions, ExportStatus: s.ExportStatus, ExportError: s.ExportError}
 }
 
 type Manager struct {
@@ -127,17 +129,18 @@ func NewManager(s *store.PlanStore, explorer Researcher, client LLM, root string
 	for _, summary := range s.List() {
 		if p := s.Get(summary.ID); p != nil && p.Session != nil {
 			x := p.Session
-			s := &Session{ID: x.ID, Prompt: x.Prompt, State: State(x.State), Context: x.Context, DecisionAreas: x.DecisionAreas, Error: x.Error, Question: x.Question, UpdatedAt: x.UpdatedAt, QuestionCount: x.QuestionCount, QuestionKeys: append([]string(nil), x.QuestionKeys...), TotalQuestions: x.TotalQuestions, ExportStatus: x.ExportStatus, ExportError: x.ExportError}
+			s := &Session{ID: x.ID, Prompt: x.Prompt, State: State(x.State), Context: x.Context, DecisionAreas: x.DecisionAreas, Error: x.Error, Question: x.Question, UpdatedAt: x.UpdatedAt, QuestionCount: x.QuestionCount, QuestionKeys: append([]string(nil), x.QuestionKeys...), QuestionProgressPersisted: x.QuestionProgressPersisted, TotalQuestions: x.TotalQuestions, ExportStatus: x.ExportStatus, ExportError: x.ExportError}
 			if s.UpdatedAt.IsZero() {
 				s.UpdatedAt = time.Now().UTC()
 			}
-			if s.QuestionCount == 0 {
+			if !s.QuestionProgressPersisted {
 				for _, msg := range p.Messages {
 					if msg.Prompt != nil {
 						s.QuestionCount++
 						s.QuestionKeys = append(s.QuestionKeys, msg.Prompt.QuestionKey)
 					}
 				}
+				s.QuestionProgressPersisted = true
 			}
 			m.sessions[summary.ID] = s
 			if s.State == Researching {
@@ -313,6 +316,11 @@ func (m *Manager) Retry(id string) error {
 	}
 	s.Error = ""
 	s.State = Idle
+	s.Question = nil
+	s.QuestionCount = 0
+	s.QuestionKeys = nil
+	s.DecisionAreas = ""
+	s.TotalQuestions = 0
 	s.UpdatedAt = time.Now().UTC()
 	s.mu.Unlock()
 	if err := m.persistSession(s); err != nil {
@@ -440,17 +448,9 @@ func (m *Manager) Answer(id, answer string) error {
 }
 
 func (m *Manager) nextQuestion(ctx context.Context, s *Session, answer string) {
-	if p := m.store.Get(s.ID); p != nil {
-		count := 0
-		for _, msg := range p.Messages {
-			if msg.Prompt != nil {
-				count++
-			}
-		}
-		if s.Snapshot().QuestionCount >= maxQuestions {
-			m.completeGrilling(s)
-			return
-		}
+	if s.Snapshot().QuestionCount >= maxQuestions {
+		m.completeGrilling(s)
+		return
 	}
 	if m.client == nil {
 		m.failGrill(s, errors.New("llm client is unavailable"))
@@ -785,27 +785,23 @@ func (m *Manager) validateQuestion(s *Session, q grillResponse) error {
 }
 
 func (m *Manager) postQuestion(s *Session, q grillResponse) {
-	p := m.store.Get(s.ID)
-	current := 1
-	if p != nil {
-		for _, msg := range p.Messages {
-			if msg.Prompt != nil {
-				current++
-			}
-		}
-	}
-	prompt := &model.Prompt{QuestionKey: q.QuestionKey, Question: q.Question, Options: q.Options, AllowCustom: q.AllowCustom, TotalQuestions: q.TotalQuestions, Current: current}
 	s.mu.Lock()
-	s.Question = prompt
+	current := s.QuestionCount + 1
+	prompt := &model.Prompt{QuestionKey: q.QuestionKey, Question: q.Question, Options: q.Options, AllowCustom: q.AllowCustom, TotalQuestions: q.TotalQuestions, Current: current}
 	s.QuestionCount++
 	s.QuestionKeys = append(s.QuestionKeys, q.QuestionKey)
+	s.QuestionProgressPersisted = true
 	s.TotalQuestions = q.TotalQuestions
 	s.UpdatedAt = time.Now().UTC()
 	s.mu.Unlock()
 	if p := m.store.Get(s.ID); p != nil {
-		p.Session = sessionState(s)
 		_, _ = m.store.AddMessage(s.ID, "agent", q.Question, q.QuestionKey, prompt)
-		p = m.store.Get(s.ID)
+	}
+	s.mu.Lock()
+	s.Question = prompt
+	s.UpdatedAt = time.Now().UTC()
+	s.mu.Unlock()
+	if p := m.store.Get(s.ID); p != nil {
 		p.Session = sessionState(s)
 		_ = m.store.Upsert(s.ID, p)
 	}
@@ -814,7 +810,7 @@ func (m *Manager) postQuestion(s *Session, q grillResponse) {
 
 func sessionState(s *Session) *model.SessionState {
 	x := s.Snapshot()
-	return &model.SessionState{ID: x.ID, Prompt: x.Prompt, State: string(x.State), Context: x.Context, DecisionAreas: x.DecisionAreas, Error: x.Error, Question: x.Question, UpdatedAt: x.UpdatedAt, QuestionCount: x.QuestionCount, QuestionKeys: x.QuestionKeys, TotalQuestions: x.TotalQuestions, ExportStatus: x.ExportStatus, ExportError: x.ExportError}
+	return &model.SessionState{ID: x.ID, Prompt: x.Prompt, State: string(x.State), Context: x.Context, DecisionAreas: x.DecisionAreas, Error: x.Error, Question: x.Question, UpdatedAt: x.UpdatedAt, QuestionCount: x.QuestionCount, QuestionKeys: x.QuestionKeys, QuestionProgressPersisted: true, TotalQuestions: x.TotalQuestions, ExportStatus: x.ExportStatus, ExportError: x.ExportError}
 }
 
 func (m *Manager) failGrill(s *Session, err error) {
