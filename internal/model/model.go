@@ -17,19 +17,22 @@ type Plan struct {
 }
 
 type SessionState struct {
-	ID             string    `json:"id"`
-	Prompt         string    `json:"prompt"`
-	State          string    `json:"state"`
-	Context        string    `json:"context,omitempty"`
-	DecisionAreas  string    `json:"decision_areas,omitempty"`
-	Error          string    `json:"error,omitempty"`
-	Question       *Prompt   `json:"question,omitempty"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	QuestionCount  int       `json:"question_count"`
-	QuestionKeys   []string  `json:"question_keys,omitempty"`
-	TotalQuestions int       `json:"total_questions,omitempty"`
-	ExportStatus   string    `json:"export_status,omitempty"`
-	ExportError    string    `json:"export_error,omitempty"`
+	ID            string    `json:"id"`
+	Prompt        string    `json:"prompt"`
+	State         string    `json:"state"`
+	Context       string    `json:"context,omitempty"`
+	DecisionAreas string    `json:"decision_areas,omitempty"`
+	Error         string    `json:"error,omitempty"`
+	Question      *Prompt   `json:"question,omitempty"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	QuestionCount int       `json:"question_count"`
+	QuestionKeys  []string  `json:"question_keys,omitempty"`
+	// QuestionProgressPersisted distinguishes current progress from legacy sessions.
+	// A persisted zero is meaningful after retry and must not be rebuilt from messages.
+	QuestionProgressPersisted bool   `json:"question_progress_persisted,omitempty"`
+	TotalQuestions            int    `json:"total_questions,omitempty"`
+	ExportStatus              string `json:"export_status,omitempty"`
+	ExportError               string `json:"export_error,omitempty"`
 }
 type Prompt struct {
 	QuestionKey    string   `json:"question_key"`
