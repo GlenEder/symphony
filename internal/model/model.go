@@ -78,13 +78,16 @@ type Item struct {
 	Rationale  string `json:"rationale,omitempty"`
 }
 type FlatPlan struct {
-	Title       string       `json:"title"`
-	Summary     string       `json:"summary"`
-	State       string       `json:"state"`
-	AgentStatus string       `json:"agent_status"`
-	UpdatedAt   string       `json:"updated_at,omitempty"`
-	Messages    []Message    `json:"messages,omitempty"`
-	Modules     []FlatModule `json:"modules"`
+	Title        string       `json:"title"`
+	Summary      string       `json:"summary"`
+	State        string       `json:"state"`
+	ReviewState  string       `json:"review_state,omitempty"`
+	ExportStatus string       `json:"export_status,omitempty"`
+	ExportError  string       `json:"export_error,omitempty"`
+	AgentStatus  string       `json:"agent_status"`
+	UpdatedAt    string       `json:"updated_at,omitempty"`
+	Messages     []Message    `json:"messages,omitempty"`
+	Modules      []FlatModule `json:"modules"`
 }
 type FlatModule struct {
 	Type       string     `json:"type"`
@@ -109,6 +112,9 @@ type FlatItem struct {
 
 func ToFlatPlan(p *Plan, status string) FlatPlan {
 	f := FlatPlan{Title: p.Title, Summary: p.Summary, State: p.State, AgentStatus: status, UpdatedAt: p.UpdatedAt, Messages: p.Messages}
+	if p.Session != nil {
+		f.ReviewState, f.ExportStatus, f.ExportError = p.Session.State, p.Session.ExportStatus, p.Session.ExportError
+	}
 	for _, m := range p.Modules {
 		fm := FlatModule{Type: m.Type, Heading: m.Heading, Columns: m.Columns, HideRowNum: m.HideRowNum}
 		for _, i := range m.Items {
