@@ -1,0 +1,1 @@
+function escapeHtml(str){const d=document.createElement("div");d.textContent=str||"";return d.innerHTML}function updateAgentDot(status){const d=document.querySelector(".agent-status-dot");if(d)d.className="agent-status-dot "+(status||"offline")}

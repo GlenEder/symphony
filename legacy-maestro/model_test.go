@@ -143,23 +143,23 @@ func TestPlan_JSONRoundTrip_WithPrompt(t *testing.T) {
 				ID:   "msg_abc",
 				Role: "agent",
 				Text: "Which database?",
-			Prompt: &Prompt{
-				QuestionKey:    "db-choice",
-				Options:        []string{"PostgreSQL", "SQLite"},
-				AllowCustom:    true,
-				TotalQuestions: 2,
-				Answered:       false,
-				Recommended:    2,
+				Prompt: &Prompt{
+					QuestionKey:    "db-choice",
+					Options:        []string{"PostgreSQL", "SQLite"},
+					AllowCustom:    true,
+					TotalQuestions: 2,
+					Answered:       false,
+					Recommended:    2,
+				},
+			},
+			{
+				ID:   "msg_def",
+				Role: "human",
+				Text: "PostgreSQL",
 			},
 		},
-		{
-			ID:   "msg_def",
-			Role: "human",
-			Text: "PostgreSQL",
-		},
-	},
-}
-b, err := json.Marshal(plan)
+	}
+	b, err := json.Marshal(plan)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
@@ -286,18 +286,18 @@ func TestFlatPlan_PreservesPromptMessages(t *testing.T) {
 				ID:   "msg_abc",
 				Role: "agent",
 				Text: "Which database?",
-			Prompt: &Prompt{
-				QuestionKey:    "db-choice",
-				Options:        []string{"PostgreSQL", "SQLite"},
-				AllowCustom:    true,
-				TotalQuestions: 2,
-				Answered:       false,
-				Recommended:    2,
+				Prompt: &Prompt{
+					QuestionKey:    "db-choice",
+					Options:        []string{"PostgreSQL", "SQLite"},
+					AllowCustom:    true,
+					TotalQuestions: 2,
+					Answered:       false,
+					Recommended:    2,
+				},
 			},
 		},
-	},
-}
-fp := toFlatPlan(plan, "listening")
+	}
+	fp := toFlatPlan(plan, "listening")
 	if len(fp.Messages) != 1 {
 		t.Fatalf("expected 1 message in flat plan, got %d", len(fp.Messages))
 	}

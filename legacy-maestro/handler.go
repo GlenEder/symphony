@@ -239,15 +239,15 @@ func registerRoutes(baseTmpl *template.Template, store *PlanStore, hub *Hub, age
 							http.Error(w, "all messages in a batch must have the same role", http.StatusBadRequest)
 							return
 						}
-					if m.Text == "" {
-						http.Error(w, "text is required for all messages", http.StatusBadRequest)
-						return
-					}
-					if m.Prompt != nil && m.Prompt.Recommended > len(m.Prompt.Options) {
-						http.Error(w, "recommended index is out of bounds", http.StatusBadRequest)
-						return
-					}
-					entries = append(entries, MsgEntry{Text: m.Text, ItemRef: m.ItemRef, Prompt: m.Prompt})
+						if m.Text == "" {
+							http.Error(w, "text is required for all messages", http.StatusBadRequest)
+							return
+						}
+						if m.Prompt != nil && m.Prompt.Recommended > len(m.Prompt.Options) {
+							http.Error(w, "recommended index is out of bounds", http.StatusBadRequest)
+							return
+						}
+						entries = append(entries, MsgEntry{Text: m.Text, ItemRef: m.ItemRef, Prompt: m.Prompt})
 					}
 
 					msgs, err := store.AddMessages(msgID, role, entries)

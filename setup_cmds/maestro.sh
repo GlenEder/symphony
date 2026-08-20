@@ -40,7 +40,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 SYMPHONY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-MAESTRO_DIR="${MAESTRO_DIR_ARG:-$SYMPHONY_DIR/maestro}"
+MAESTRO_DIR="${MAESTRO_DIR_ARG:-$SYMPHONY_DIR/legacy-maestro}"
 RC_FILE="${CONFIG_FILE_PATH:-$HOME/.zshrc}"
 
 if $DRY_RUN; then
@@ -52,7 +52,7 @@ if $DRY_RUN; then
   echo "[DRY RUN]   export MAESTRO_PLANS_DIR=\"$MAESTRO_DIR/plans\""
   CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/maki"
   AGENTS_DST="$CONFIG_DIR/AGENTS.md"
-  if [ -f "$MAESTRO_INJECT_SRC" ]; then
+  if [[ -n "${MAESTRO_INJECT_SRC:-}" && -f "$MAESTRO_INJECT_SRC" ]]; then
     echo "[DRY RUN] Would append $MAESTRO_INJECT_SRC -> $AGENTS_DST"
   fi
   exit 0

@@ -77,15 +77,15 @@ func setUpTestHandler(t *testing.T) (*PlanStore, *AgentState, *http.ServeMux) {
 					http.Error(w, "all messages in a batch must have the same role", http.StatusBadRequest)
 					return
 				}
-			if m.Text == "" {
-				http.Error(w, "text is required for all messages", http.StatusBadRequest)
-				return
-			}
-			if m.Prompt != nil && m.Prompt.Recommended > len(m.Prompt.Options) {
-				http.Error(w, "recommended index is out of bounds", http.StatusBadRequest)
-				return
-			}
-			entries = append(entries, MsgEntry{Text: m.Text, ItemRef: m.ItemRef, Prompt: m.Prompt})
+				if m.Text == "" {
+					http.Error(w, "text is required for all messages", http.StatusBadRequest)
+					return
+				}
+				if m.Prompt != nil && m.Prompt.Recommended > len(m.Prompt.Options) {
+					http.Error(w, "recommended index is out of bounds", http.StatusBadRequest)
+					return
+				}
+				entries = append(entries, MsgEntry{Text: m.Text, ItemRef: m.ItemRef, Prompt: m.Prompt})
 			}
 			msgs, err := store.AddMessages(planID, role, entries)
 			if err != nil {
@@ -229,12 +229,12 @@ func TestHandler_PostBatchMessages_WithPrompt(t *testing.T) {
 			{
 				"role": "agent",
 				"text": "Question 1",
-			"prompt": map[string]interface{}{
-				"question_key":    "q1",
-				"options":         []string{"A", "B"},
-				"total_questions": 2,
-				"recommended":     1,
-			},
+				"prompt": map[string]interface{}{
+					"question_key":    "q1",
+					"options":         []string{"A", "B"},
+					"total_questions": 2,
+					"recommended":     1,
+				},
 			},
 			{
 				"role": "agent",

@@ -1,7 +1,7 @@
-# Ignore runtime plan files generated in the plans directory
-maestro/plans/*
-!maestro/plans/module-showcase.json
-!maestro/plans/grilling-wizard-demo.json
+# Ignore runtime plan files generated in the legacy Maestro directory
+legacy-maestro/plans/*
+!legacy-maestro/plans/module-showcase.json
+!legacy-maestro/plans/grilling-wizard-demo.json
 *.pid
 
 # Research skill scratch notes (never committed)
