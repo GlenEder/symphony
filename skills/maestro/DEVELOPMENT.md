@@ -26,6 +26,8 @@ maestro/
     └── demo.toon        # Example plan
 ```
 
+The `/grill/` route (`templates/grill.html`) serves a legacy interactive grilling wizard — retained but no longer driven by any skill.
+
 ## Dependencies
 
 - Go 1.26+
