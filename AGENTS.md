@@ -68,7 +68,7 @@ Flow: **research → in-session grilling interview (via the `grilling` skill, be
 
 Key skills:
 - `research` — gather facts and context for the plan
-- `maestro` — create and serve the structured plan, run the feedback loop, handle approval, and trigger the export
+- `maestro` — author the finalized structured plan from the resolved decisions, serve it for review, run the feedback loop, handle approval, and trigger the export
 - `grilling` — interviews the user relentlessly in the coding-agent session BEFORE a plan exists (one question at a time), resolving decisions one-by-one and handing them to plan authoring
 - `maestro-export` — convert the approved maestro plan JSON to a standardized Markdown work ticket
 
