@@ -38,13 +38,16 @@ When working in a repository with openwiki, read the OpenWiki quickstart first, 
 
 When you produce any substantive plan (architecture, design, implementation, refactor, or investigation), you MUST serve it via the Maestro web UI.
 
-First, decide whether you need to ask the user any questions:
+First, decide whether you need to ask the user any questions — any grilling happens in this agent session BEFORE maestro is invoked:
 
-- **If you have unresolved decisions or questions** → start a grilling interview via the `grilling` skill. The grilling session creates the plan and resolves decisions one-by-one. After all questions are answered, populate the plan with modules (decisions, steps, risks, criteria, etc.) and proceed to the feedback loop.
-- **If you have no questions** (all decisions are clear, or the user explicitly declined grilling) → create the plan directly:
-  1. **Format it as a Maestro plan document** — use the `maestro` skill's JSON plan format with appropriate module types (e.g., `steps` for sequential work, `risks` for trade-offs, `notes` for design rationale, `criteria` for acceptance criteria, `questions` for open decisions).
-  2. **Serve it via the Maestro web UI** — start the server, write the plan JSON file to `$MAESTRO_PLANS_DIR`, and open the browser URL. If `$MAESTRO_PLANS_DIR` is unset, the server defaults to `plans` relative to the current working directory; the `setup` script exports `$MAESTRO_PLANS_DIR`, so ensure it is set before writing the file.
-  3. **Enter the feedback loop** — enter the listening loop after the initial plan generation so the user can interact with the plan. See the `maestro` skill for the heartbeat cadence, listen endpoint, and exit conditions.
+- **If you have unresolved decisions or questions** → run a grilling interview FIRST via the `grilling` skill in the coding-agent session (interactive question tool, one question at a time), recording each resolved decision as a `decision` module entry.
+- **If you have no questions** (all decisions are clear, or the user explicitly declined grilling) → create the plan directly.
+
+Both branches then converge: author the finalized plan document, then invoke maestro solely to render and review it:
+
+1. **Format the finalized Maestro plan document** — use the `maestro` skill's JSON plan format and populate it with all modules (e.g., `steps` for sequential work, `risks` for trade-offs, `notes` for design rationale, `criteria` for acceptance criteria, `questions` for open decisions).
+2. **Serve it via the Maestro web UI** — start the server, write the plan JSON file to `$MAESTRO_PLANS_DIR`, and open the browser URL. If `$MAESTRO_PLANS_DIR` is unset, the server defaults to `plans` relative to the current working directory; the `setup` script exports `$MAESTRO_PLANS_DIR`, so ensure it is set before writing the file.
+3. **Enter the feedback loop ONLY for rendering and reviewing** — collect item-level comments and secure approval; interviewing does not happen here. See the `maestro` skill for the heartbeat cadence, listen endpoint, and exit conditions.
 
 This does NOT apply to: trivial 1-3 line responses, commit messages, or inline code comments. When in doubt, use Maestro.
 
@@ -61,12 +64,12 @@ The composer stage is for creating, stress-testing, and approving plans.
 It **ends** when the plan is approved and a work ticket is exported.
 It does **not** proceed to implementation.
 
-Flow: **research → grilling interview → plan population → final review → approval → export work ticket → stop**
+Flow: **research → in-session grilling interview (via the `grilling` skill, before the plan exists) → plan population → final review of the authored plan served via maestro → approval → export work ticket → stop**
 
 Key skills:
 - `research` — gather facts and context for the plan
 - `maestro` — create and serve the structured plan, run the feedback loop, handle approval, and trigger the export
-- `grilling` — interview the user relentlessly about every aspect of the plan (one question at a time), resolving decisions one-by-one; this is the active interview phase within the maestro feedback session
+- `grilling` — interviews the user relentlessly in the coding-agent session BEFORE a plan exists (one question at a time), resolving decisions one-by-one and handing them to plan authoring
 - `maestro-export` — convert the approved maestro plan JSON to a standardized Markdown work ticket
 
 Output: one Markdown work ticket per stage at `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`.
