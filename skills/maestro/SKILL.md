@@ -205,17 +205,14 @@ Stage-authoring rules:
 - Size each stage as a small coherent slice of work.
 - Always decompose; trivial work yields exactly one stage (the degenerate case).
 
-## Grilling Interview Phase
+## Finalized Plan Handoff
 
-To author the plan, actively interview the user to stress-test the plan before the final review.
-Ask clarifying questions via maestro messages, one at a time, and update the plan with the answers as each question is resolved.
+Maestro no longer hosts or drives an interview phase.
+The interview and stress-testing happen in the agent session before this skill is invoked, using the **grilling** skill there.
+Each question resolved in that session becomes a `decision` module entry (with trade-offs as `risks` or open points as `questions`) before the plan is handed over.
+When a plan reaches this skill it should already be final, except for review feedback handled via PATCH during the feedback session.
 
-- Use the **grilling** skill to drive this phase: ask probing questions about decisions, risks, assumptions, and trade-offs.
-- Walk down each branch of the decision tree, resolving dependencies one-by-one.
-- Update the plan via PATCH as each question is resolved.
-- Continue until the user confirms a shared understanding.
-
-The interview flow is: **plan created → grilling interview (agent asks questions, updates plan) → display for final review → approval → export → stop**.
+The flow is: **plan finalized in-session → maestro renders it → feedback session → approval → export → stop**.
 
 ## Feedback Session Workflow
 
