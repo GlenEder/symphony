@@ -23,11 +23,19 @@ The project is designed for [Maki](https://github.com/gleneder/maki) but ports e
 # Only symlink skills
 ./setup skills --dry-run
 
+# Install for Claude Code instead of Maki
+./setup skills --claude
+./setup agents --claude
+
 # With custom config (maestro subcommand)
 ./setup maestro --maestro-dir /path/to/maestro --config-file-path ~/.bashrc
 ```
 
-This symlinks skills into `~/.config/maki/skills/`, builds the Maestro binary, and adds `maestro` to your PATH. See [Operations](operations/README.md) for details.
+The default install symlinks skills into `~/.config/maki/skills/`, builds the Maestro binary, and adds `maestro` to your PATH.
+
+Pass `--claude` to install for Claude Code instead — `./setup skills --claude` symlinks into `~/.claude/skills/` and `./setup agents --claude` copies `AGENTS.md` to `~/.claude/CLAUDE.md`.
+
+See [Operations](operations/README.md) for details.
 
 Run `./setup -h` to list all available subcommands, or `./setup <command> -h` for subcommand-specific help.
 
