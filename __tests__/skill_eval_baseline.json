@@ -11,8 +11,8 @@
   "scenarioCount": 4,
   "completedScenarioCount": 4,
   "selectionAccuracy": 1,
-  "totalLines": 1299,
-  "totalTokens": 8189,
+  "totalLines": 1159,
+  "totalTokens": 7491,
   "scenarios": [
     {
       "id": "author-plan",
@@ -41,37 +41,46 @@
           "skill": "grilling",
           "trigger": "recommended",
           "found": true
+        },
+        {
+          "skill": "grilling",
+          "trigger": "shared understanding",
+          "found": true
+        },
+        {
+          "skill": "grilling",
+          "trigger": "interactive question tool",
+          "found": true
         }
       ],
       "routingTriggersValid": true,
       "candidateScores": [
         {
           "skill": "grilling",
-          "score": 37,
+          "score": 54,
           "promptMatches": [
+            "author",
             "new",
             "maestro",
             "plan",
             "for",
             "change",
-            "create",
             "the",
-            "json",
             "into",
-            "implementation",
             "use",
             "grill",
             "stress",
             "test",
             "decisions",
-            "and",
-            "review"
+            "and"
           ],
           "triggerMatches": [
             "Ask the questions one at a time",
-            "recommended"
+            "recommended",
+            "shared understanding",
+            "interactive question tool"
           ],
-          "triggerCount": 2
+          "triggerCount": 4
         },
         {
           "skill": "maestro",
@@ -155,7 +164,7 @@
         "maestro"
       ],
       "topCandidates": [
-        "maestro"
+        "grilling"
       ],
       "unexpectedMatches": [],
       "ambiguous": false,
@@ -171,6 +180,10 @@
           "found": true
         },
         {
+          "rule": "Finalized Plan Handoff",
+          "found": true
+        },
+        {
           "rule": "grilling",
           "found": true
         },
@@ -183,18 +196,18 @@
         {
           "skill": "maestro",
           "path": "skills/maestro/SKILL.md",
-          "lines": 401,
-          "tokens": 2662
+          "lines": 398,
+          "tokens": 2644
         },
         {
           "skill": "grilling",
           "path": "skills/grilling/SKILL.md",
-          "lines": 144,
-          "tokens": 927
+          "lines": 77,
+          "tokens": 596
         }
       ],
-      "totalLines": 545,
-      "totalTokens": 3589
+      "totalLines": 475,
+      "totalTokens": 3240
     },
     {
       "id": "session-loop",
@@ -223,20 +236,14 @@
       "candidateScores": [
         {
           "skill": "grilling",
-          "score": 16,
+          "score": 10,
           "promptMatches": [
             "the",
             "user",
-            "review",
-            "exist",
             "maestro",
             "plan",
             "start",
-            "server",
-            "poll",
             "with",
-            "heartbeat",
-            "respond",
             "new",
             "feedback",
             "and",
@@ -350,12 +357,12 @@
         {
           "skill": "maestro",
           "path": "skills/maestro/SKILL.md",
-          "lines": 401,
-          "tokens": 2662
+          "lines": 398,
+          "tokens": 2644
         }
       ],
-      "totalLines": 401,
-      "totalTokens": 2662
+      "totalLines": 398,
+      "totalTokens": 2644
     },
     {
       "id": "export-approved-plan",
@@ -389,10 +396,10 @@
             "the",
             "maestro",
             "plan",
+            "export",
             "into",
-            "and",
-            "then",
-            "implement"
+            "work",
+            "and"
           ],
           "triggerMatches": [],
           "triggerCount": 0
@@ -520,6 +527,11 @@
         },
         {
           "skill": "grilling",
+          "trigger": "interactive question tool",
+          "found": true
+        },
+        {
+          "skill": "grilling",
           "trigger": "recommended",
           "found": true
         },
@@ -533,12 +545,13 @@
       "candidateScores": [
         {
           "skill": "grilling",
-          "score": 50,
+          "score": 60,
           "promptMatches": [
             "grill",
             "relentlessly",
             "about",
             "the",
+            "architecture",
             "decision",
             "until",
             "reach",
@@ -548,7 +561,6 @@
             "one",
             "question",
             "time",
-            "include",
             "recommended",
             "choice",
             "and",
@@ -558,23 +570,21 @@
           ],
           "triggerMatches": [
             "Ask the questions one at a time",
+            "interactive question tool",
             "recommended",
             "shared understanding"
           ],
-          "triggerCount": 3
+          "triggerCount": 4
         },
         {
           "skill": "maestro",
-          "score": 17,
+          "score": 14,
           "promptMatches": [
             "grill",
-            "about",
             "the",
             "decision",
             "until",
             "reach",
-            "shared",
-            "understand",
             "ask",
             "one",
             "question",
@@ -654,12 +664,12 @@
         {
           "skill": "grilling",
           "path": "skills/grilling/SKILL.md",
-          "lines": 144,
-          "tokens": 927
+          "lines": 77,
+          "tokens": 596
         }
       ],
-      "totalLines": 144,
-      "totalTokens": 927
+      "totalLines": 77,
+      "totalTokens": 596
     }
   ]
 }

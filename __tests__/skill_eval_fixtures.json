@@ -6,9 +6,9 @@
     "selectionRules": ["maestro", "grilling"],
     "routingTriggers": {
       "maestro": ["POST the plan JSON", "feedback session"],
-      "grilling": ["Ask the questions one at a time", "recommended"]
+      "grilling": ["Ask the questions one at a time", "recommended", "shared understanding", "interactive question tool"]
     },
-    "completionRules": ["POST the plan JSON", "Stage Decomposition", "grilling", "feedback session"]
+    "completionRules": ["POST the plan JSON", "Stage Decomposition", "Finalized Plan Handoff", "grilling", "feedback session"]
   },
   {
     "id": "session-loop",
@@ -36,7 +36,7 @@
     "expectedSkills": ["grilling"],
     "selectionRules": ["grilling"],
     "routingTriggers": {
-      "grilling": ["Ask the questions one at a time", "recommended", "shared understanding"]
+      "grilling": ["Ask the questions one at a time", "interactive question tool", "recommended", "shared understanding"]
     },
     "completionRules": ["one at a time", "recommended", "shared understanding"]
   }
