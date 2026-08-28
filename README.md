@@ -14,7 +14,7 @@ The skills and systems in this repo are heavily influenced by outside sources li
 - **Skills** (`.config/maki/skills/`) — Markdown instruction files that teach the agent specialized workflows, such as:
   - `gh` — GitHub CLI operations (PRs, issues, releases, Actions)
   - `maki-agent` — Maki configuration and usage reference
-  - `plan-implementation-procedure` — Agentic implementer↔reviewer subagent loop on an approved plan (max 3 iterations), then a draft PR via publish-it
+  - `plan-implementation-procedure` — Multi-stage plan orchestration: works through all not-done stage tickets (per-stage implementer↔reviewer loop, max 3 iterations, per-stage commits on a plan branch), halting on flagged stages, then one draft PR via publish-it
   - `publish-it` — Quick one-shot PR publishing
   - `create-bash-script` — Bash script scaffolding
   - `research` — Delegate reading legwork to a background subagent against primary sources
