@@ -14,8 +14,8 @@ HELP_MESSAGE="Usage: setup [--dry-run] [<command>] [options]
   Install and configure Symphony components from this repository.
 
   Commands:
-    agents      Copy AGENTS.md into the Maki config directory
-    skills      Symlink skill directories into the Maki config directory (use --cursor for Cursor)
+    agents      Copy AGENTS.md into the Maki config directory (use --claude for Claude)
+    skills      Symlink skill directories into the Maki config directory (use --cursor for Cursor, --claude for Claude)
     commands    Symlink command files into the Maki config directory
     providers   Symlink provider scripts into the Maki config directory
     init        Symlink init.lua into the Maki config directory

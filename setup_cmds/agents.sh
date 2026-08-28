@@ -1,24 +1,29 @@
 #!/bin/bash
 # Symphony setup — install AGENTS.md into config dir
 #
-# Usage: setup agents [--dry-run] [-h/--help]
+# Usage: setup agents [--dry-run] [--claude] [-h/--help]
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-HELP_MESSAGE="Usage: setup agents [--dry-run] [-h/--help]
+HELP_MESSAGE="Usage: setup agents [--dry-run] [--claude] [-h/--help]
 
-  Copy AGENTS.md into the Maki config directory.
+  Copy AGENTS.md into the Maki or Claude config directory.
 
+  --claude     Target Claude config (~/.claude/CLAUDE.md) instead of Maki
   --dry-run    Preview without making changes
-  -h, --help   Show this help message"
+  -h, --help   Show this help message
+
+  Installing replaces any existing destination file."
 
 DRY_RUN=false
+CLAUDE=false
 
 while [[ "$#" -gt 0 ]]; do
   case $1 in
     --dry-run) DRY_RUN=true ;;
+    --claude) CLAUDE=true ;;
     -h|--help) echo "$HELP_MESSAGE"; exit 0 ;;
     *) echo "Unknown parameter passed: $1"; echo "$HELP_MESSAGE"; exit 1 ;;
   esac
@@ -26,10 +31,17 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 SYMPHONY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/maki"
+
+if $CLAUDE; then
+  CONFIG_DIR="$HOME/.claude"
+  filename="CLAUDE.md"
+else
+  CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/maki"
+  filename="AGENTS.md"
+fi
 
 src="$SYMPHONY_DIR/AGENTS.md"
-dst="$CONFIG_DIR/AGENTS.md"
+dst="$CONFIG_DIR/$filename"
 
 if [ ! -f "$src" ]; then
   exit 0
@@ -48,4 +60,4 @@ if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
 fi
 
 cp "$src" "$dst"
-echo "  installed AGENTS.md"
+echo "  installed $filename"

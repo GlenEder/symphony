@@ -18,6 +18,13 @@ The `setup` script is a dispatcher for modular subcommands:
 
 # Only symlink skills
 ./setup skills
+
+# Install for Claude Code (skills into ~/.claude/skills/, AGENTS.md into ~/.claude/CLAUDE.md)
+./setup skills --claude
+./setup agents --claude
+
+# Install skills for Cursor (~/.cursor/skills/)
+./setup skills --cursor
 ```
 
 Run `./setup -h` to list all subcommands.
@@ -26,8 +33,8 @@ Run `./setup -h` to list all subcommands.
 
 | Subcommand | Description |
 |------------|-------------|
-| `agents` | Copies `AGENTS.md` to `~/.config/maki/AGENTS.md` |
-| `skills` | Symlinks each `skills/<name>/` directory to `~/.config/maki/skills/<name>/` |
+| `agents` | Copies `AGENTS.md` to `~/.config/maki/AGENTS.md` (default) or `~/.claude/CLAUDE.md` with `--claude` |
+| `skills` | Symlinks each `skills/<name>/` directory to `~/.config/maki/skills/<name>/` (default), `~/.cursor/skills/` with `--cursor`, or `~/.claude/skills/` with `--claude` |
 | `commands` | Symlinks each `commands/*` file to `~/.config/maki/commands/` |
 | `providers` | Symlinks each `providers/*` file to `~/.config/maki/providers/` |
 | `init` | Symlinks `init.lua` to `~/.config/maki/init.lua` |

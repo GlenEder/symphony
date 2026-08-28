@@ -45,6 +45,8 @@ The `setup.sh` script at the repo root symlinks each skill directory into the ag
 ~/.config/maki/skills/<name>/ → .../symphony/skills/<name>/
 ```
 
+Use `./setup skills --claude` to symlink into `~/.claude/skills/` for Claude Code, or `./setup skills --cursor` to symlink into `~/.cursor/skills/` for Cursor.
+
 Because they are symlinks, edits to the repo are immediately available to the agent.
 
 ## How Skills Work

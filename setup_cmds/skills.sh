@@ -1,36 +1,47 @@
 #!/bin/bash
 # Symphony setup — symlink skill directories into config dir
 #
-# Usage: setup skills [--dry-run] [--cursor] [-h/--help]
+# Usage: setup skills [--dry-run] [--cursor] [--claude] [-h/--help]
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-HELP_MESSAGE="Usage: setup skills [--dry-run] [--cursor] [-h/--help]
+HELP_MESSAGE="Usage: setup skills [--dry-run] [--cursor] [--claude] [-h/--help]
 
-  Symlink each skills/<name>/ directory into the Maki or Cursor config directory.
+  Symlink each skills/<name>/ directory into the Maki, Cursor, or Claude config directory.
 
   --cursor     Target Cursor config (~/.cursor/skills/) instead of Maki
+  --claude     Target Claude config (~/.claude/skills/) instead of Maki
   --dry-run    Preview without making changes
   -h, --help   Show this help message"
 
 DRY_RUN=false
 CURSOR=false
+CLAUDE=false
 
 while [[ "$#" -gt 0 ]]; do
   case $1 in
     --dry-run) DRY_RUN=true ;;
     --cursor) CURSOR=true ;;
+    --claude) CLAUDE=true ;;
     -h|--help) echo "$HELP_MESSAGE"; exit 0 ;;
     *) echo "Unknown parameter passed: $1"; echo "$HELP_MESSAGE"; exit 1 ;;
   esac
   shift
 done
 
+if $CURSOR && $CLAUDE; then
+  echo "--cursor and --claude are mutually exclusive"
+  echo "$HELP_MESSAGE"
+  exit 1
+fi
+
 SYMPHONY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-if $CURSOR; then
+if $CLAUDE; then
+  CONFIG_DIR="$HOME/.claude"
+elif $CURSOR; then
   CONFIG_DIR="$HOME/.cursor"
 else
   CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/maki"
