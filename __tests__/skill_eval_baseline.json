@@ -139,7 +139,7 @@
         },
         {
           "skill": "plan-implementation-procedure",
-          "score": 13,
+          "score": 15,
           "promptMatches": [
             "staged",
             "maestro",
@@ -149,7 +149,9 @@
             "create",
             "the",
             "json",
+            "into",
             "implementation",
+            "stages",
             "use",
             "test",
             "and",
@@ -458,12 +460,13 @@
         },
         {
           "skill": "plan-implementation-procedure",
-          "score": 13,
+          "score": 14,
           "promptMatches": [
             "the",
             "maestro",
             "plan",
             "approved",
+            "into",
             "staged",
             "work",
             "tickets",
@@ -617,20 +620,17 @@
         },
         {
           "skill": "plan-implementation-procedure",
-          "score": 12,
+          "score": 9,
           "promptMatches": [
             "the",
             "decision",
-            "until",
-            "reach",
+            "shared",
             "ask",
             "one",
             "time",
-            "include",
             "and",
             "not",
-            "act",
-            "confirm"
+            "act"
           ],
           "triggerMatches": [],
           "triggerCount": 0

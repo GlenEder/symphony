@@ -35,6 +35,7 @@ Done when: you have a concrete file path to hand the subagent.
 ### 3. Dispatch a background subagent
 
 Spin up a **non-blocking** subagent — in Cursor, the Task tool with `run_in_background: true` and `subagent_type: generalPurpose`; in Maki, a background agent.
+Run it at **medium tier**: research verifies facts against primary sources, and a cheap model's misreadings become plan defects downstream.
 Hand it the question, the save path, and the primary-sources requirement below.
 Tell it to write findings to that path and cite each claim.
 

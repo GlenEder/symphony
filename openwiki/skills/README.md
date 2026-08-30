@@ -31,7 +31,7 @@ compatibility: opencode  # or other agent systems
 | **toon** | `skills/toon/` | Token-Oriented Object Notation — encode, decode, and validate TOON data |
 | **gh** | `skills/gh/` | GitHub CLI operations — PRs, issues, releases, Actions |
 | **maki-agent** | `skills/maki-agent/` | Maki agent configuration and usage reference |
-| **plan-implementation-procedure** | `skills/plan-implementation-procedure/` | Full plan-to-PR workflow |
+| **plan-implementation-procedure** | `skills/plan-implementation-procedure/` | Multi-stage plan-to-PR workflow — all stage tickets through implementer↔reviewer loops to one draft PR |
 | **pm** | `skills/pm/` | Project management ticket generation |
 | **publish-it** | `skills/publish-it/` | Quick one-shot PR publishing |
 | **create-bash-script** | `skills/create-bash-script/` | Bash script scaffolding |
@@ -92,7 +92,11 @@ See the [TOON Format section](../toon/README.md) for a format overview.
 
 ## Other Skills
 
-The remaining skills (`gh`, `maki-agent`, `plan-implementation-procedure`, `pm`, `publish-it`, `create-bash-script`) are standard Markdown instruction files for agent workflows. They do not have associated server-side code or scripts beyond what they describe.
+The remaining skills (`gh`, `maki-agent`, `plan-implementation-procedure`, `pm`, `publish-it`, `create-bash-script`) are standard Markdown instruction files for agent workflows.
+They do not have associated server-side code or scripts beyond what they describe.
+`plan-implementation-procedure` orchestrates the multi-stage performance flow: a bare `pip it` works through all not-done stage tickets of an approved plan (lowest pending-or-in-progress first), runs each stage through an implementer↔reviewer loop (max 3 iterations), and commits each completed stage on the plan branch.
+A flagged stage — max-iter with unresolved blocker/major findings, or 2 consecutive no-progress iterations — halts the run, publishing what's done as the plan's single draft PR and persisting the findings into the halted ticket.
+A `pip stage N` qualifier runs only that stage.
 
 ## Global Agent Instructions
 

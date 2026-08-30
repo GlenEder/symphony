@@ -78,15 +78,19 @@ For legacy single-stage plans, output the fallback ticket at `~/.config/symphony
 ### Performance Stage (Implementation)
 
 The performance stage is invoked **explicitly** by the user via "pip it" / "implement the plan" / "execute the plan".
-It reads the work ticket and enters an autonomous implementer↔reviewer loop.
+It works through **all not-done stage tickets** of the plan, lowest pending-or-in-progress stage first, running each stage through the implementer↔reviewer loop and committing it on the plan branch.
+A qualifier like `pip stage N` runs only that single stage.
 
-Flow: **read work ticket → implementer↔reviewer loop (max 3 iterations) → publish-it draft PR → stop**
+Flow: **create plan branch → per not-done stage (lowest first): implementer↔reviewer loop (max 3 iterations) → stage commit → next stage → publish-it draft PR for the whole plan → stop**
+
+A run halts when a stage is flagged: max 3 iterations with unresolved blocker/major findings, or 2 consecutive no-progress iterations.
+On a halt it publishes what's done as the plan's single draft PR, persists the findings into the halted ticket, and asks the user how to proceed.
 
 Key skills:
-- `plan-implementation-procedure` — orchestrates the implementer↔reviewer subagent loop against the work ticket
+- `plan-implementation-procedure` — orchestrates the multi-stage implementer↔reviewer subagent loop over the plan's stage work tickets
 - `publish-it` — creates a branch, commits, pushes, and opens a **draft** PR
 
-Input: the lowest-numbered pending stage ticket from `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`.
+Input: the plan's not-done stage tickets at `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`, lowest pending-or-in-progress first.
 For legacy single-stage plans, use `~/.config/symphony/work_tickets/{plan-id}.md` (fallback: maestro plan JSON).
 
 ### Work Ticket Storage
