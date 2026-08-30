@@ -13,8 +13,8 @@ A qualifier like `pip stage 2` runs only that single stage, then stops — publi
 
 For each stage, run an autonomous loop of two subagents:
 
-- An **implementer** subagent (medium-tier) edits the working tree to satisfy the stage and writes tests.
-- A **reviewer** subagent (strong-tier) reviews the implementation + tests against the stage and best practices, emitting structured findings and a verdict.
+- An **implementer** subagent (weak-tier) edits the working tree to satisfy the stage and writes tests.
+- A **reviewer** subagent (medium-tier) reviews the implementation + tests against the stage and best practices, emitting structured findings and a verdict.
 
 The per-stage loop runs up to **3 iterations** (implementer → reviewer per iteration) and stops early when the reviewer is satisfied (no blocker/major findings).
 
@@ -96,7 +96,7 @@ iteration=$((iteration + 1))
 #### 2a. Dispatch the implementer subagent
 
 Spawn a **fresh** implementer subagent (foreground/blocking).
-In Cursor, the Task tool with `subagent_type: generalPurpose` and a **medium-tier** model; in Maki, the `task` tool (general) at medium tier.
+In Cursor, the Task tool with `subagent_type: generalPurpose` and a **weak-tier** model; in Maki, the `task` tool (general) at weak tier.
 
 Pass it the **implementer dispatch contract** (below): the stage plan, the latest reviewer findings (empty on iteration 1, unless resuming from `## Outstanding Review Findings`), and the constraints (read working tree first, do not commit or branch, run tests + linters before reporting done).
 
@@ -125,7 +125,7 @@ Done when: the no-progress streak is updated and the halt decision is made.
 #### 2d. Dispatch the reviewer subagent
 
 Spawn a **fresh** reviewer subagent (foreground/blocking).
-In Cursor, the Task tool with `subagent_type: generalPurpose` and a **strong-tier** model; in Maki, the `task` tool (general) at strong tier.
+In Cursor, the Task tool with `subagent_type: generalPurpose` and a **medium-tier** model; in Maki, the `task` tool (general) at medium tier.
 
 Pass it the **reviewer dispatch contract** (below): the stage plan, the rubric (plan adherence, tests, best practices), instruction to run tests + linters, and the requirement to emit a structured TOON block (findings + `satisfied` verdict) via the `toon-output` skill.
 
