@@ -32,10 +32,11 @@ compatibility: opencode  # or other agent systems
 | **gh** | `skills/gh/` | GitHub CLI operations — PRs, issues, releases, Actions |
 | **maki-agent** | `skills/maki-agent/` | Maki agent configuration and usage reference |
 | **plan-implementation-procedure** | `skills/plan-implementation-procedure/` | Multi-stage plan-to-PR workflow — all stage tickets through implementer↔reviewer loops to one draft PR |
-| **pm** | `skills/pm/` | Project management ticket generation |
+| **kaneo-pm** | `skills/kaneo-pm/` | Manage Kaneo projects and tasks via its REST API |
 | **publish-it** | `skills/publish-it/` | Quick one-shot PR publishing |
 | **create-bash-script** | `skills/create-bash-script/` | Bash script scaffolding |
 | **research** | `skills/research/` | Delegate reading legwork to a background subagent against primary sources |
+| **dig** | `skills/dig/` | Dispatch a specialized debugging subagent that finds the root cause of a bug the user presents — evidence-backed RCA with ruled-outs and a fix direction, never the fix itself |
 
 ## Installation
 
