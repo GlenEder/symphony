@@ -30,6 +30,7 @@ compatibility: opencode  # or other agent systems
 | **maestro** | `skills/maestro/` | Using the Maestro planning server — build plans, run feedback sessions, use the API |
 | **toon** | `skills/toon/` | Token-Oriented Object Notation — encode, decode, and validate TOON data |
 | **gh** | `skills/gh/` | GitHub CLI operations — PRs, issues, releases, Actions |
+| **bb** | `skills/bb/` | Bitbucket CLI (`bb`) operations — PRs, issues, pipelines, as equivalent to the `gh` skill |
 | **maki-agent** | `skills/maki-agent/` | Maki agent configuration and usage reference |
 | **plan-implementation-procedure** | `skills/plan-implementation-procedure/` | Multi-stage plan-to-PR workflow — all stage tickets through implementer↔reviewer loops to one draft PR |
 | **pm** | `skills/pm/` | Project management ticket generation |
