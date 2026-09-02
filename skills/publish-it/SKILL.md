@@ -1,6 +1,6 @@
 ---
 name: publish-it
-description: Publish uncommitted working-tree changes to a draft PR when the user says 'publish it', 'push it up', 'pr it', or wants small fixes shipped without a planning pass. Opens a new draft PR, or appends to the existing draft PR when the current branch already has one — a resumed plan run grows its single plan PR, never a stacked one. Use plan-implementation-procedure ('pip it') when the work needs implementing or tests; publish-it acts only on changes already in the working tree.
+description: Publish uncommitted working-tree changes to a draft PR when the user says 'publish it', 'push it up', 'pr it', or wants small fixes shipped without a planning pass. Opens a new draft PR, or appends to the existing draft PR when the current branch already has one — a resumed plan run grows its single plan PR, never a stacked one. Worktree-aware: when the cwd is a git worktree (typically a pip plan run) it detects this, publishes exactly as on the plan branch, and leaves worktree teardown to git-worktree. Use plan-implementation-procedure ('pip it') when the work needs implementing or tests; publish-it acts only on changes already in the working tree.
 compatibility: opencode
 ---
 
@@ -16,12 +16,15 @@ Run in parallel:
 - `git diff` — the changes that will ship
 - `gh pr list --head <current-branch> --state open --json number,url,title` — any **open PR** on the current branch
 - `git log <default-branch>..HEAD --oneline` — commits already on the current branch; the plan's stage commits (e.g. `feat(<scope>): stage N — …`) mark it as the **plan branch**
+- `git rev-parse --git-common-dir` and `git rev-parse --git-dir` — they **differ** when cwd is inside a git worktree (the common dir points at the main repo's `.git`); a cwd under `~/.worktrees/` is also a worktree
 
 Note whether **plan-implementation-procedure invoked you**: then the current branch is its **plan branch** and must become the single plan PR.
 
+If the two `git rev-parse` calls differ, or the cwd is under `~/.worktrees/`, state to the user that you are running **inside a worktree** (typically a pip plan run): plan-branch mode may apply, per the caller's context exactly as today — detection is informational and never selects a mode by itself.
+
 If the `gh` call fails (network/auth), say so to the user and treat the open-PR state as unknown — the fallback is the new-PR flow in step 3, exactly the pre-append behavior (the plan-branch case is unaffected: it is detected from the caller and the log, not from `gh`).
 
-**Done when** every command has run and its output is accounted for: you know the current branch, the default branch, the changes to ship, the current branch's open PR (or that detection failed), and whether the current branch is a plan branch.
+**Done when** every command has run and its output is accounted for: you know the current branch, the default branch, the changes to ship, the current branch's open PR (or that detection failed), whether the current branch is a plan branch, and whether the cwd is a worktree.
 
 ### 2. Generate Branch Name
 
@@ -42,6 +45,8 @@ State the mode to the user, then:
 - **Append mode** — the current branch has an open PR (step 1): stay on it and skip branch creation; the push in step 5 updates that PR (a resumed plan run grows its single plan PR this way).
   Never on the default branch — a PR headed there is not this skill's to grow.
 - **Plan-branch mode** — the current branch is the plan branch (plan-implementation-procedure invoked you, or step 1's log shows the plan's stage commits) with no open PR yet, e.g. a first halt: stay on it and publish it directly, never a second branch or stacked PR for the plan.
+  When the cwd is a worktree (step 1), plan-branch mode behaves identically: `git push` and `gh` work normally from a worktree, so stay on the plan branch, push it, and open or append the single plan PR — no special handling.
+  publish-it never removes or prunes a worktree: teardown belongs to the calling orchestrator via [git-worktree](../git-worktree/SKILL.md)'s reap.
 - **New-PR mode** — no open PR on the current branch and not a plan-branch scenario: create the new branch from current HEAD:
 
 ```bash
@@ -115,3 +120,12 @@ git push
 ```
 
 **Done when** the new changes are committed and pushed to that branch and the draft PR is updated.
+
+publish-it never removes or prunes a worktree, including the one it ran in: teardown belongs to the calling orchestrator via [git-worktree](../git-worktree/SKILL.md)'s reap, which removes worktrees whose plan PR has merged.
+
+## Edge cases
+
+| Scenario | Handling |
+|---|---|
+| **cwd is a plan worktree with no open PR** (e.g. a first halt) | Publish the plan branch directly (plan-branch mode, step 3) and leave the worktree in place — teardown is the orchestrator's, via [git-worktree](../git-worktree/SKILL.md). |
+| **cwd is a plan worktree with an open PR** | Append to the single plan PR (append mode, step 3) and leave the worktree in place — teardown is the orchestrator's, via [git-worktree](../git-worktree/SKILL.md). |
