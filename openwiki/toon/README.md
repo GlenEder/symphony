@@ -96,4 +96,5 @@ data.metadata.items[2]: a,b
 
 ## Usage in Symphony
 
-The TOON format is available as a skill (`toon`) for use by LLM agents when generating compact structured output. It is also the native format for Maestro `.toon` plan files on disk, though the Maestro server stores plans as JSON internally.
+The TOON format is available as a skill (`toon`) for use by LLM agents when generating compact structured output.
+The Maestro planning server previously stored plans as `.toon` files but has since migrated to JSON plan files on disk.

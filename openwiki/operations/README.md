@@ -1,19 +1,19 @@
 # Operations — Setup, Running, and Configuration
 
-This page covers how to install, configure, and operate the Symphony tool suite and Maestro planning server.
+This page covers how to install, configure, and operate the Symphony tool suite and the legacy Maestro planning server (pending deprecation).
 
 ## Setup
 
 The `setup` script is a dispatcher for modular subcommands:
 
 ```bash
-# Full setup (runs all subcommands)
+# List all subcommands
 ./setup
 
-# Preview mode
-./setup --dry-run
+# Preview mode for a subcommand
+./setup skills --dry-run
 
-# Only build Maestro (with custom options)
+# Only build the legacy Maestro server (with custom options)
 ./setup maestro --maestro-dir /custom/path/maestro --config-file-path ~/.bashrc
 
 # Only symlink skills
@@ -38,9 +38,9 @@ Run `./setup -h` to list all subcommands.
 | `commands` | Symlinks each `commands/*` file to `~/.config/maki/commands/` |
 | `providers` | Symlinks each `providers/*` file to `~/.config/maki/providers/` |
 | `init` | Symlinks `init.lua` to `~/.config/maki/init.lua` |
-| `maestro` | Builds Maestro and configures PATH in shell rc file |
+| `maestro` | Builds the legacy Maestro server and configures PATH in shell rc file |
 
-Running `./setup` with no arguments runs all six subcommands in sequence.
+Running `./setup` with no arguments prints the help message; run each subcommand explicitly.
 
 ### Idempotency
 
@@ -51,11 +51,12 @@ The script is safe to re-run:
 
 ## Prerequisites
 
-- **Go 1.26+** — for building Maestro (see `maestro/go.mod`)
 - **Bash** — for running `setup` and helper scripts
-- **[fswatch](https://emcrisostomo.github.io/fswatch/)** — recommended for zero-latency file change detection in Maestro listen scripts. Falls back to `stat` polling if unavailable.
+- **Go 1.26+** — for building the legacy Maestro server (see `maestro/go.mod`); not needed for the skill suite
 
-## Running Maestro
+## Running Maestro (Legacy)
+
+The Maestro server is no longer part of the skill suite's planning workflow — it remains available as a standalone legacy server pending replacement by the plannotator project.
 
 ```bash
 # From any directory if setup was run
@@ -73,7 +74,7 @@ cd maestro && go run .
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `8080` | HTTP server port |
-| `MAESTRO_PLANS_DIR` | `plans` | Directory with `.toon` files (relative to CWD or absolute) |
+| `MAESTRO_PLANS_DIR` | `plans` | Directory with `.json` plan files (relative to CWD or absolute) |
 | `MAESTRO_DIR` | Binary dir or CWD | Directory containing `templates/` and `static/` assets |
 
 The server runs until Ctrl+C. It logs connections, file changes, and errors to stdout.
@@ -88,100 +89,36 @@ curl http://localhost:8080/api/plans
 curl http://localhost:8080/api/plan/test-all-modules
 ```
 
-## Feedback Session Workflow
-
-A feedback session lets an AI agent present a plan to a human reviewer and get real-time updates.
-
-### 1. Start the Server
-
-```bash
-maestro &
-```
-
-### 2. Start the Heartbeat
-
-The agent runs the heartbeat script to indicate it is listening:
-
-```bash
-scripts/maestro-heartbeat.sh --plan-name <plan-id> --port 8080 &
-```
-
-This sends `POST /api/agent/<plan-id>/heartbeat` every 15 seconds. The server shows a solid blue dot in the UI for this plan.
-
-### 3. Start the Listen Loop
-
-The agent runs the listen script to block until the plan changes:
-
-```bash
-scripts/maestro-listen.sh --plan-name <plan-id> --port 8080 --timeout 7200
-```
-
-When the human edits the plan file, the script detects the change (via `fswatch` or `stat` polling), fetches the updated JSON via the API, and outputs it to stdout. The agent can then read the changes and respond.
-
-### 4. Stop the Session
-
-```bash
-scripts/maestro-heartbeat.sh --plan-name <plan-id> --stop
-```
-
-### Script Reference
-
-#### maestro-heartbeat.sh
-
-```
---plan-name <name>    Plan name (required, matches .toon filename without extension)
---maestro-dir <path>  Path to maestro directory (default: MAESTRO_DIR env or .)
---port <port>         Maestro server port (default: 8080)
---interval <s>        Seconds between heartbeats (default: 15)
---timeout <s>         Max seconds to run (default: 0 = forever)
--s, --stop            Stop a running heartbeat for this plan
-```
-
-The script saves its PID to `.maestro-hb-<plan-name>.pid` in the maestro directory. The `--stop` flag reads this file and kills the process.
-
-#### maestro-listen.sh
-
-```
---plan-name <name>    Plan name (required)
---maestro-dir <path>  Path to maestro directory
---port <port>         Maestro server port (default: 8080)
---timeout <s>         Max seconds to wait (default: 7200)
---poll-fallback-sleep <s>  Seconds between stat polls (default: 2)
-```
-
-Detection method:
-1. **fswatch** — if installed, uses `fswatch -1 --latency 0.5` for instant notification
-2. **stat polling** — falls back to `stat -f %m` with configurable interval
-
-The script checks if the plan file exists before starting. Exit code 2 means timeout.
-
 ## Plan File Management
 
 ### Creating a Plan
 
-Create a `.toon` file in the plans directory:
+Create a `.json` file in the plans directory:
 
-```toon
-title: My Plan
-summary: Description of the plan
-state: draft
-
-modules[N]:
-  - heading: Section Name
-    type: <module-type>
-    items[N]{fields}:
-      ...
+```json
+{
+  "title": "My Plan",
+  "summary": "Description of the plan",
+  "state": "draft",
+  "modules": [
+    {
+      "type": "criteria",
+      "heading": "Acceptance Criteria",
+      "items": [{"text": "First criterion"}]
+    }
+  ]
+}
 ```
 
-See the [TOON format](../toon/README.md) and the [Maestro data model](../maestro/README.md#plan-data-model) for full syntax.
+See the [Maestro data model](../maestro/README.md#plan-data-model) for full syntax.
 
 ### Editing a Plan
 
-Edit the `.toon` file with any text editor. The file watcher detects changes and broadcasts updates over WebSocket to connected browsers.
+Edit the `.json` file with any text editor. The file watcher detects changes and broadcasts updates over WebSocket to connected browsers.
 
 ### Deleting a Plan
 
-Delete the `.toon` file. The server will still serve it from memory until restart. There is no API endpoint for deleting plans — it must be done on disk.
+Delete the `.json` file. The server will still serve it from memory until restart. There is no API endpoint for deleting plans — it must be done on disk.
 
 ## Troubleshooting
 
@@ -195,11 +132,11 @@ Set `MAESTRO_DIR` to the `maestro/` directory: `MAESTRO_DIR=/path/to/maestro mae
 Ensure the Go version supports `http.HandleFunc` with `r.PathValue` (Go 1.22+). The `maestro/go.mod` specifies Go 1.26.4.
 
 **"Plan not found" in the UI**
-Plans are loaded from `MAESTRO_PLANS_DIR` (default `plans/`). Place `.toon` files there. Files are loaded by basename without extension — `plans/demo.toon` becomes plan ID `demo`.
+Plans are loaded from `MAESTRO_PLANS_DIR` (default `plans/`). Place `.json` files there. Files are loaded by basename without extension — `plans/demo.json` becomes plan ID `demo`.
 
 **File watcher errors**
 The server logs `file watcher: ... (live updates disabled)` if `fsnotify` fails (e.g., on some network filesystems). The server continues to work, but plan changes won't auto-reload until the next HTTP request triggers a re-read.
 
 ## Data Directory
 
-Plans are stored as `.toon` files. Maestro creates the plans directory on startup if it doesn't exist. There is no database — all state is in these files. Messages are persisted inside the `.toon` file alongside the plan data through the TOON round-trip encoding.
+Plans are stored as `.json` files. Maestro creates the plans directory on startup if it doesn't exist. There is no database — all state is in these files. Messages are persisted inside the `.json` file alongside the plan data.

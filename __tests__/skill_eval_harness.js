@@ -17,7 +17,6 @@ const path = require("path");
 const root = path.join(__dirname, "..");
 const fixtures = JSON.parse(fs.readFileSync(path.join(__dirname, "skill_eval_fixtures.json"), "utf8"));
 const planningSkillNames = new Set([
-  "maestro", "maestro-author", "maestro-session", "maestro-export",
   "grilling", "plan-implementation-procedure"
 ]);
 

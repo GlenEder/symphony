@@ -1,56 +1,47 @@
 # Testing
 
-**There are currently no automated tests in this repository.**
+Tests live in two places: `__tests__/` (Node.js — the skill-eval harness and Maestro UI static-asset tests) and `maestro/` (Go tests for the legacy planning server).
+There is no CI configuration — run the suites locally.
 
-No `*_test.go` files exist in the Maestro Go server, the TOON Go library, or anywhere else in the project. There are no test scripts, CI configurations, or test harnesses.
+## Skill Evaluation Suite
 
-## This Means
+`node __tests__/skill_eval_harness.js [output-path]` is a deterministic static proxy for planning-skill evaluation.
+It reads scenarios from `__tests__/skill_eval_fixtures.json`, scores declared prompt terms and routing triggers against actual skill frontmatter/body content, and reports selection accuracy and completion checks.
 
-- The Maestro HTTP handlers, PlanStore, WebSocket hub, and AgentState are untested.
-- The TOON Go encoding/decoding library (`maestro/lib/toon/`) has no test coverage.
-- The shell scripts (`setup.sh`, `maestro-heartbeat.sh`, `maestro-listen.sh`) are not tested.
-- Changes rely entirely on manual verification through the browser UI and API calls.
+- **Fixtures** (`skill_eval_fixtures.json`) — scenario prompts, expected skills, routing triggers, and completion rules; edit these to change coverage.
+- **Baseline** (`skill_eval_baseline.json`) — generated output; regenerate with `node __tests__/skill_eval_harness.js __tests__/skill_eval_baseline.json` — do not hand-edit.
 
-## What Should Be Tested
+## Maestro Server Tests (Legacy)
 
-### Maestro Server
+The legacy Maestro planning server has both Go tests and Node.js UI tests.
 
-**Unit tests** for core logic:
-- `maestro/store.go` — `decodePlan`, `AddMessage`, `DeleteMessage`, `SetState`, `List` (sorting), `persistPlan`
-- `maestro/model.go` — `toFlatPlan` conversion
-- `maestro/ws.go` — `AgentState` transitions (heartbeat, GC, SetThinking/SetListening/SetOffline)
+Go tests (run with `cd maestro && go test ./...`) cover:
 
-**Integration tests** for HTTP handlers:
-- `maestro/handler.go` — all API endpoints, WebSocket upgrade, template rendering
-- Test with a temp directory and sample `.toon` files
+- `handler_test.go` — POST message endpoints (single/batch, prompts, invalid recommended options)
+- `model_test.go` — plan decoding, JSON round-trips, FlatPlan field preservation, store self-write detection and persistence
+- `watcher_test.go` — the file poller (new/changed/deleted files, self-write skip, configurable interval)
 
-**Test HTTP handler patterns:** Use `net/http/httptest` with a temporary `PlanStore` and `Hub`.
+Node.js tests (run with `node __tests__/<file>`) exercise the DOM logic in `maestro/static/script.js` with a minimal DOM mock — no browser required:
 
-### TOON Go Library
+- `maestro-script-utils.test.js` — shared utilities
+- `maestro-send-responses.test.js` — send-responses DOM patterns
+- `maestro-duplicate-messages.test.js` — discussion-panel duplicate message prevention
 
-The library at `maestro/lib/toon/` should have round-trip tests (encode then decode), edge case tests (special characters, empty arrays, deeply nested structures), and regression tests for the list-format absorption bug (see [TOON documentation](../toon/README.md)).
+## What Remains Untested
 
-### Shell Scripts
+- `setup` and `setup_cmds/*.sh` have no automated tests — exercise them with `--dry-run` previews.
+- Skills are Markdown instructions; routing is proxied by the eval harness, not a real model router.
 
-Test `setup.sh` with a temp directory. Test `maestro-heartbeat.sh` and `maestro-listen.sh` with a running test instance.
+## Testing the Legacy Maestro Server Manually
 
-## Testing Approach
-
-Until tests are added, the recommended approach for validating changes:
-
-1. **Build** the Maestro binary: `cd maestro && go build -o maestro .`
+1. **Build** the binary: `cd maestro && go build -o maestro .`
 2. **Start the server** with a test plans directory: `MAESTRO_PLANS_DIR=/tmp/test-plans ./maestro`
-3. **Place test `.toon` files** and verify they load via the API
-4. **Exercise endpoints** with `curl` or the browser UI
+3. **Place test `.json` plan files** there and verify they load via `GET /api/plans`
+4. **Exercise the endpoints** with `curl` or the browser UI
 5. **Test WebSocket** with a tool like `websocat` or a browser page
-6. **Test scripts** by running them against the test server
 
 ## Adding Tests
 
-When adding tests, follow these conventions:
-
-- Tests should go in the same package as the code they test (standard Go `_test.go` pattern)
-- The TOON library should use its own `_test.go` files since it has a separate `go.mod`
-- HTTP handler tests should use `httptest.NewServer` or `httptest.NewRecorder`
-- Use a temp directory (`t.TempDir()`) for plan file operations
-- Test the TOON round-trip for all edge cases (empty arrays, special characters, deep nesting)
+- Go tests go in the same package as the code they test (standard `_test.go` pattern), using `httptest.NewServer`/`NewRecorder` and `t.TempDir()` for plan file operations.
+- New skill-eval coverage is added via `skill_eval_fixtures.json`; regenerate the baseline afterward.
+- Node.js UI tests follow the existing minimal-DOM-mock pattern in `__tests__/`.
