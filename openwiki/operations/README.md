@@ -48,6 +48,7 @@ The script is safe to re-run:
 - Existing files are replaced with updated symlinks
 - The PATH block in your rc file uses a marker comment (`# Maestro Planning Server`) and is only added if absent
 - Non-existent source files are silently skipped
+- Stale skill links whose source was deleted from this repo are removed
 
 ## Prerequisites
 

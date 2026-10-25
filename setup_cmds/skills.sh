@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 HELP_MESSAGE="Usage: setup skills [--dry-run] [--cursor] [--claude] [-h/--help]
 
-  Symlink each skills/<name>/ directory into the Maki, Cursor, or Claude config directory.
+  Symlink each skills/<name>/ directory into the Maki, Cursor, or Claude config directory, and remove stale links to skills deleted from this repo.
 
   --cursor     Target Cursor config (~/.cursor/skills/) instead of Maki
   --claude     Target Claude config (~/.claude/skills/) instead of Maki
@@ -75,5 +75,24 @@ if [ -d "$SYMPHONY_DIR/skills" ]; then
     [ -d "$skill_dir" ] || continue
     name="$(basename "$skill_dir")"
     link "$skill_dir" "$CONFIG_DIR/skills/$name"
+  done
+fi
+
+# Remove stale links whose source skill no longer exists in this repo
+if [ -d "$CONFIG_DIR/skills" ]; then
+  for installed in "$CONFIG_DIR/skills"/*; do
+    [ -L "$installed" ] || continue
+    target="$(readlink "$installed")"
+    case "$target" in
+      "$SYMPHONY_DIR/skills"/*) ;;
+      *) continue ;;
+    esac
+    [ -e "$target" ] && continue
+    if $DRY_RUN; then
+      echo "[DRY RUN] rm stale link $installed -> $target"
+    else
+      rm "$installed"
+      echo "  removed stale $(basename "$installed")"
+    fi
   done
 fi
