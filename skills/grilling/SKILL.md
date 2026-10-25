@@ -66,11 +66,10 @@ Everything else is unchanged: research facts first, wait for each answer, and co
 
 ## Output Contract
 
-Each resolved question becomes a `decision` module entry handed off to plan authoring:
+Each resolved question becomes a decision entry handed off to plan authoring:
 - `text` — the decision, stated plainly.
 - `options` — the alternatives considered, with the chosen one listed first or explicitly named.
 - `rationale` — why this choice was made.
 
-The maestro skill renders these entries when it authors the plan.
-maestro-export turns them into the work ticket's Key Decisions section.
+The composer stage turns these entries into the work tickets' Key Decisions sections.
 Grilling itself writes no plan file — it produces resolved decisions and nothing else.

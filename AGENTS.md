@@ -34,25 +34,6 @@ When working in a repository with openwiki, read the OpenWiki quickstart first, 
   If you see one, even if it is not caused by what you are working on right now, still fix it.
 - For planning discussions, stay in Agent mode by default.
 
-## Maestro — Interactive Planning Server
-
-When you produce any substantive plan (architecture, design, implementation, refactor, or investigation), you MUST serve it via the Maestro web UI.
-
-First, decide whether you need to ask the user any questions — any grilling happens in this agent session BEFORE maestro is invoked:
-
-- **If you have unresolved decisions or questions** → run a grilling interview FIRST via the `grilling` skill in the coding-agent session (interactive question tool, one question at a time), recording each resolved decision as a `decision` module entry.
-- **If you have no questions** (all decisions are clear, or the user explicitly declined grilling) → create the plan directly.
-
-Both branches then converge: author the finalized plan document, then invoke maestro solely to render and review it:
-
-1. **Format the finalized Maestro plan document** — use the `maestro` skill's JSON plan format and populate it with all modules (e.g., `steps` for sequential work, `risks` for trade-offs, `notes` for design rationale, `criteria` for acceptance criteria, `questions` for open decisions).
-2. **Serve it via the Maestro web UI** — start the server, write the plan JSON file to `$MAESTRO_PLANS_DIR`, and open the browser URL. If `$MAESTRO_PLANS_DIR` is unset, the server defaults to `plans` relative to the current working directory; the `setup` script exports `$MAESTRO_PLANS_DIR`, so ensure it is set before writing the file.
-3. **Enter the feedback loop ONLY for rendering and reviewing** — collect item-level comments and secure approval; interviewing does not happen here. See the `maestro` skill for the heartbeat cadence, listen endpoint, and exit conditions.
-
-This does NOT apply to: trivial 1-3 line responses, commit messages, or inline code comments. When in doubt, use Maestro.
-
-Direct text output of plan content is the wrong path — the listener should see it rendered in the browser with structured modules, discussion threading, and item-level commenting.
-
 ## Symphony Skill Suite — Two-Stage Architecture
 
 The symphony skill suite separates planning from implementation into two distinct stages.
@@ -61,19 +42,24 @@ They are **never** chained automatically — the user must explicitly invoke eac
 ### Composer Stage (Planning)
 
 The composer stage is for creating, stress-testing, and approving plans.
-It **ends** when the plan is approved and a work ticket is exported.
+It **ends** when the plan is approved and its work tickets are written.
 It does **not** proceed to implementation.
 
-Flow: **research → in-session grilling interview (via the `grilling` skill, before the plan exists) → plan population → final review of the authored plan served via maestro → approval → export work ticket → stop**
+Flow: **research → in-session grilling interview (via the `grilling` skill, before the plan exists) → plan authoring → final review of the authored plan with the user → approval → write work tickets → stop**
 
 Key skills:
 - `research` — gather facts and context for the plan
-- `maestro` — author the finalized structured plan from the resolved decisions, serve it for review, run the feedback loop, handle approval, and trigger the export
 - `grilling` — interviews the user relentlessly in the coding-agent session BEFORE a plan exists (one question at a time), resolving decisions one-by-one and handing them to plan authoring
-- `maestro-export` — convert the approved maestro plan JSON to a standardized Markdown work ticket
+
+Plan authoring happens in the agent session, not in a dedicated tool.
+When the plan decomposes into implementation stages, author one work ticket per stage directly in the Work Ticket Storage format; single-stage plans get a single ticket.
+Present the authored plan to the user for review and secure explicit approval before writing the tickets — never write tickets for an unapproved plan.
+
+Structured plan rendering and item-level review — previously provided by the Maestro planning server — will be reintegrated via the plannotator project.
+Until that integration lands, plan review happens in the agent session.
 
 Output: one Markdown work ticket per stage at `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`.
-For legacy single-stage plans, output the fallback ticket at `~/.config/symphony/work_tickets/{plan-id}.md`.
+For single-stage plans, output the ticket at `~/.config/symphony/work_tickets/{plan-id}.md`.
 
 ### Performance Stage (Implementation)
 
@@ -91,11 +77,22 @@ Key skills:
 - `publish-it` — creates a branch, commits, pushes, and opens a **draft** PR
 
 Input: the plan's not-done stage tickets at `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`, lowest pending-or-in-progress first.
-For legacy single-stage plans, use `~/.config/symphony/work_tickets/{plan-id}.md` (fallback: maestro plan JSON).
+For single-stage plans, use `~/.config/symphony/work_tickets/{plan-id}.md`.
 
 ### Work Ticket Storage
 
 Work tickets are stored one per stage at `~/.config/symphony/work_tickets/{plan-id}-stage-{N}.md`.
-The legacy single-stage fallback is `~/.config/symphony/work_tickets/{plan-id}.md`.
+The single-stage fallback is `~/.config/symphony/work_tickets/{plan-id}.md`.
 The config directory is user-global (not per-project), so work tickets survive across projects and sessions.
+
 Each ticket is a clean, self-contained Markdown file with acceptance criteria, implementation steps, decisions, risks, and assumptions — suitable for copy-paste into Linear, Jira, or GitHub Issues.
+
+A staged ticket contains, in order:
+
+1. A header block — `# {plan title} — Stage N: {stage name}`, `**Status**: pending`, and `**Stage**: N of M of the approved {plan-id} plan`.
+2. The plan summary, when present.
+3. Global **Key Decisions** — one subheading per decision with the chosen alternative, the rationale, and the alternatives considered — and **Assumptions**.
+4. The stage's **Acceptance Criteria** as a checkbox list, **Implementation Steps** as a numbered list, and **Risks** as severity-tagged bullets.
+
+A single-stage ticket omits the stage header block and carries all sections under the plain plan title.
+Omit any section the plan has no content for.

@@ -27,7 +27,7 @@ compatibility: opencode  # or other agent systems
 
 | Skill | Directory | Purpose |
 |-------|-----------|---------|
-| **maestro** | `skills/maestro/` | Using the Maestro planning server — build plans, run feedback sessions, use the API |
+| **grilling** | `skills/grilling/` | Interview the user relentlessly to stress-test a plan and resolve open decisions before plan authoring |
 | **toon** | `skills/toon/` | Token-Oriented Object Notation — encode, decode, and validate TOON data |
 | **gh** | `skills/gh/` | GitHub CLI operations — PRs, issues, releases, Actions |
 | **bb** | `skills/bb/` | Bitbucket CLI (`bb`) operations — PRs, issues, pipelines, as equivalent to the `gh` skill |
@@ -38,6 +38,7 @@ compatibility: opencode  # or other agent systems
 | **create-bash-script** | `skills/create-bash-script/` | Bash script scaffolding |
 | **research** | `skills/research/` | Delegate reading legwork to a background subagent against primary sources |
 | **dig** | `skills/dig/` | Dispatch a specialized debugging subagent that finds the root cause of a bug the user presents — evidence-backed RCA with ruled-outs and a fix direction, never the fix itself |
+| **writing-great-skills** | `skills/writing-skills/` | Reference for writing and editing skills well — vocabulary and principles that make a skill predictable |
 
 ## Installation
 
@@ -53,7 +54,7 @@ Because they are symlinks, edits to the repo are immediately available to the ag
 
 ## How Skills Work
 
-When an agent loads a skill (e.g., via a "use the maestro skill" instruction), it reads the `SKILL.md` file which provides:
+When an agent loads a skill (e.g., via a "use the gh skill" instruction), it reads the `SKILL.md` file which provides:
 
 1. **Purpose** — What the skill is for and when to use it
 2. **Quick Start** — Minimal working example
@@ -62,22 +63,6 @@ When an agent loads a skill (e.g., via a "use the maestro skill" instruction), i
 5. **Gotchas** — Known pitfalls and edge cases
 
 The skills are designed to be self-contained — an agent should be able to follow a skill without additional context.
-
-## The Maestro Skill
-
-The most complex skill is `skills/maestro/SKILL.md` (24KB). It teaches agents to:
-
-- Start and manage the Maestro planning server
-- Create and edit plan `.toon` files with all module types
-- Run feedback sessions (heartbeat + listen loops)
-- Use the HTTP API for programmatic plan management
-- Handle discussion threads and item-level commenting
-
-The skill references two shell scripts:
-- `scripts/maestro-heartbeat.sh` — background heartbeat loop for agent presence
-- `scripts/maestro-listen.sh` — watch plan file for changes and output JSON
-
-See the [Maestro section](../maestro/README.md) for the server's capabilities, and the [Operations section](../operations/README.md) for heartbeat/listen script usage.
 
 ## The TOON Skill
 
@@ -94,7 +79,7 @@ See the [TOON Format section](../toon/README.md) for a format overview.
 
 ## Other Skills
 
-The remaining skills (`gh`, `maki-agent`, `plan-implementation-procedure`, `pm`, `publish-it`, `create-bash-script`) are standard Markdown instruction files for agent workflows.
+The remaining skills (`gh`, `bb`, `maki-agent`, `plan-implementation-procedure`, `kaneo-pm`, `publish-it`, `create-bash-script`) are standard Markdown instruction files for agent workflows.
 They do not have associated server-side code or scripts beyond what they describe.
 `plan-implementation-procedure` orchestrates the multi-stage performance flow: a bare `pip it` works through all not-done stage tickets of an approved plan (lowest pending-or-in-progress first), runs each stage through an implementer↔reviewer loop (max 3 iterations), and commits each completed stage on the plan branch.
 A flagged stage — max-iter with unresolved blocker/major findings, or 2 consecutive no-progress iterations — halts the run, publishing what's done as the plan's single draft PR and persisting the findings into the halted ticket.
@@ -108,7 +93,7 @@ The `AGENTS.md` file at the repo root (alwaysApply: true) provides baseline inst
 - Plan-before-implement workflow
 - Bug reproduction discipline
 - Pixel-perfection UI standards
-- **Plan Display** — requires agents to use the Maestro format for substantive plans, serving them via the Maestro web UI for structured feedback
+- **Two-stage planning workflow** — composer and performance stages, explicitly invoked and never chained automatically
 
 ## Important Notes
 

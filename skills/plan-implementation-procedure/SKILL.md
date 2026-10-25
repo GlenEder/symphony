@@ -49,8 +49,7 @@ Locate the target plan's tickets and select the stage to run:
 - An `in-progress` ticket is an abandoned run — resume it, do not skip past it.
 - Re-glob on **every cycle** of the plan-level loop (step 2); the lowest not-done stage changes as stages complete.
 - **Single-stage qualifier**: when the trigger names a stage (`pip stage 2`), run only that stage — it must be `pending` or `in-progress`; if it is already `done`, report and exit.
-- **Legacy fallback**: use `~/.config/symphony/work_tickets/{plan-id}.md` for single-stage plans.
-- **Plan JSON fallback**: use `$MAESTRO_PLANS_DIR/{plan-id}.json` (parse its `modules` — especially `criteria` and `steps`).
+- **Single-stage fallback**: use `~/.config/symphony/work_tickets/{plan-id}.md` for single-stage plans.
 - For a standalone `pip it` (no composer stage): use the plan content already in context, or the plan file the user points to.
 
 Ticket status transitions:
@@ -132,7 +131,7 @@ Done when: the no-progress streak is updated and the halt decision is made.
 Spawn a **fresh** reviewer subagent (foreground/blocking).
 In Cursor, the Task tool with `subagent_type: generalPurpose` and a **medium-tier** model; in Maki, the `task` tool (general) at medium tier.
 
-Pass it the **reviewer dispatch contract** (below): the stage plan, the absolute worktree path, the rubric (plan adherence, tests, best practices), instruction to run tests + linters, and the requirement to emit a structured TOON block (findings + `satisfied` verdict) via the `toon-output` skill.
+Pass it the **reviewer dispatch contract** (below): the stage plan, the absolute worktree path, the rubric (plan adherence, tests, best practices), instruction to run tests + linters, and the requirement to emit a structured TOON block (findings + `satisfied` verdict) via the `toon` skill.
 
 Receive the reviewer's TOON block.
 
@@ -206,8 +205,7 @@ When no not-done stage remains, the plan is complete — the bare-`pip it` compl
 - If invoked when every stage is already `done`, publish only when no draft PR exists yet; otherwise just report it.
 - Report to the user: the stages completed, the PR URL, and any outstanding findings.
 - Stop at the PR.
-- Do not write back to Maestro or Linear.
-- The Maestro approval-time closeout (agent offline, heartbeat stop, final ack) already happened before the loop started.
+- Do not write back to Linear.
 
 Done when: the single draft PR URL is reported with the stage list, and no further writeback is attempted.
 
@@ -242,7 +240,7 @@ Give each fresh reviewer subagent:
 - **Read the working tree first**: the code under review lives in the plan worktree — read the current state of the files before judging them.
 - **Fresh worktree**: the worktree has no guaranteed `node_modules`, build cache, or local config — if a failure traces to missing gitignored local config (`.env` and friends), report it as a finding or note rather than working around it.
 - **Run tests + linters yourself** to verify, not just read them. Treat genuine failures as findings; treat flakes as non-blockers.
-- **Emit a structured TOON block** (via the `toon-output` skill) as your final output, with:
+- **Emit a structured TOON block** (via the `toon` skill) as your final output, with:
   - A `findings` list — each row: `severity` (`blocker` | `major` | `minor` | `nit`), `location` (file:area), `description`, `suggested_fix`.
   - A `satisfied` boolean verdict — `true` when no `blocker`/`major` findings remain.
 - **No parseable TOON block = failed pass**: always end with the TOON block.
@@ -277,4 +275,4 @@ Give each fresh reviewer subagent:
 - Subagents inherit the orchestrator's cwd, so dispatch contracts always carry the **absolute** worktree path — never a relative path or the default cwd.
 - Post a short summary to the user after each implementer pass and each reviewer pass, plus a stage-completion summary after each stage.
 - One draft PR per plan — never per stage: publish-it publishes the plan branch itself, opening the PR if none exists or appending to it if one does.
-- After publish, stop at the PR — no Maestro/Linear writeback.
+- After publish, stop at the PR — no Linear writeback.

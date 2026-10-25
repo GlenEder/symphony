@@ -18,20 +18,20 @@ The skills and systems in this repo are heavily influenced by outside sources li
   - `publish-it` — Quick one-shot PR publishing
   - `create-bash-script` — Bash script scaffolding
   - `research` — Delegate reading legwork to a background subagent against primary sources
+  - `grilling` — Interview the user relentlessly to stress-test a plan and resolve open decisions before plan authoring
 - **Setup script** — Symlinks everything into the correct Maki config directory
 
 ## Prerequisites
 
 - [Maki](https://github.com/gleneder/maki) coding agent installed and configured
 - Bash
-- [fswatch](https://emcrisostomo.github.io/fswatch/) (recommended, not required) — enables zero-token-wait feedback sessions in the Maestro skill. Falls back to `stat` polling if unavailable.
 
 ## Setup
 
 Run the setup script from the repo root:
 
 ```bash
-./setup.sh
+./setup
 ```
 
 This will symlink all skills and config files into `~/.config/maki/` (or `$XDG_CONFIG_HOME/maki/` if set).
@@ -39,7 +39,7 @@ This will symlink all skills and config files into `~/.config/maki/` (or `$XDG_C
 To preview what would be linked without making changes:
 
 ```bash
-./setup.sh --dry-run
+./setup --dry-run
 ```
 
 The setup is safe to re-run — it updates symlinks incrementally and skips any sources that don't exist.
@@ -48,13 +48,13 @@ The setup is safe to re-run — it updates symlinks incrementally and skips any 
 
 ```
 symphony/
-├── setup.sh          # Installation script (symlinks into ~/.config/maki/)
-├── AGENTS.md         # Global agent instructions (optional)
-├── init.lua          # Maki init configuration (optional)
+├── setup             # Installation dispatcher (symlinks into ~/.config/maki/)
+├── setup_cmds/       # Setup subcommand scripts
+├── AGENTS.md         # Global agent instructions
+├── maestro/          # Legacy planning server (pending deprecation)
 ├── skills/           # Skill markdown files (subdirectories)
-├── commands/         # Custom commands (optional)
-├── providers/        # Provider scripts (optional)
-└── .plans/           # Planning documents
+├── openwiki/         # Repository documentation
+└── __tests__/        # Test suites
 ```
 
 ## Usage
@@ -67,7 +67,7 @@ Each skill is a standalone markdown file with a consistent structure (purpose, i
 
 1. Port the markdown skills to your agent's instruction format (many agents accept markdown prompts directly)
 2. Port shell-based commands as needed
-3. The `setup.sh` script is Maki-specific; for other agents, simply copy the skill files to the equivalent config directory
+3. The `setup` script is Maki-specific; for other agents, simply copy the skill files to the equivalent config directory
 
 ## License
 

@@ -59,7 +59,7 @@ When the digger returns, read the saved RCA file and present it **in full** in c
 
 Then stop.
 Do not implement the fix.
-Do not chain into the planning flow — maestro is a separate, explicitly invoked stage.
+Do not chain into the planning flow — the composer stage is separate and explicitly invoked.
 
 Done when: the RCA has been presented in chat and you have stopped without editing code or opening a plan.
 
